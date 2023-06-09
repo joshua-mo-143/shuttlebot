@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS issues (
+    Id SERIAL PRIMARY KEY,
+    DiscordThreadId VARCHAR NOT NULL,
+    Origin VARCHAR NOT NULL,
+    SevCat CHAR NOT NULL CHECK (SevCat >= 1 AND SevCat <= 5),
+    InitialMessage JSONB,
+    ResolverUserId VARCHAR CHECK (Resolved = true),
+    GithubLink VARCHAR,
+    Resolved BOOLEAN NOT NULL DEFAULT false,
+    Created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    LastUpdated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    ResolvedTimedate TIMESTAMP WITH TIME ZONE CHECK (resolved = true)
+);
