@@ -8,7 +8,9 @@ publish = false
 [dependencies]
 anyhow = "1.0.71"
 octocrab = "0.25.1"
+poise = "0.5.5"
 serenity = { version = "0.11.5", default-features = false, features = ["unstable_discord_api", "client", "gateway", "rustls_backend", "model"] }
+shuttle-poise = "0.18.0"
 shuttle-runtime = "0.18.0"
 shuttle-secrets = "0.18.0"
 shuttle-serenity = "0.18.0"
