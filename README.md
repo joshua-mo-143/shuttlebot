@@ -38,10 +38,10 @@ Clone the repository then simply run `cargo shuttle run`.
 |-------------------|-------------------------------------------------------------------|
 | anyhow            | Easy errors. Might change this at some point.                     |
 | octocrab          | Interact with GitHub API easily                                   |
-| serenity          | Discord bot framework                                             |
+| poise             | Discord bot framework (built on Serenity)                         |
 | shuttle-runtime   | Shuttle dependency                                                |
 | shuttle-secrets   | Environmental variables on Shuttle                                |
-| shuttle-serenity  | Allows the Shuttle runtime to use Serenity                        |
+| shuttle-poise     | Allows the Shuttle runtime to use Poise                           |
 | shuttle-shared-db | Provisioned database via Shuttle (uses postgres with sqlx pool)   |
 | sqlx              | Raw SQL is faster (also: allows easy interfacing with shuttle DB) |
 | tokio             | Required for async and is a Shuttle dependency                    |
