@@ -230,11 +230,9 @@ dependencies = [
  "anyhow",
  "octocrab",
  "poise",
- "serenity",
  "shuttle-poise",
  "shuttle-runtime",
  "shuttle-secrets",
- "shuttle-serenity",
  "shuttle-shared-db",
  "sqlx",
  "tokio",
@@ -2243,16 +2241,6 @@ dependencies = [
  "async-trait",
  "serde",
  "shuttle-service",
-]
-
-[[package]]
-name = "shuttle-serenity"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b2e7d2f1f4bd19536201adcaf828c47dd5922b477d2d3c4fc79a602b41a53f7"
-dependencies = [
- "serenity",
- "shuttle-runtime",
 ]
 
 [[package]]

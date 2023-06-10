@@ -1,5 +1,5 @@
 use octocrab::Octocrab;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::GatewayIntents;
 use shuttle_poise::ShuttlePoise;
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
@@ -8,7 +8,7 @@ mod commands;
 mod utils;
 
 use bot::Bot;
-use commands::DocsLinks;
+use commands::{docs, elevate, getchannel, hello};
 use utils::get_secrets;
 
 pub struct Data {
@@ -18,23 +18,6 @@ pub struct Data {
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
-
-/// Responds with "world!"
-#[poise::command(slash_command)]
-async fn hello(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.say("world!").await?;
-    Ok(())
-}
-
-/// Link to Shuttle documentation
-#[poise::command(slash_command)]
-pub async fn docs(
-    ctx: Context<'_>,
-    #[description = "The docs you want to link to"] docs: DocsLinks,
-) -> Result<(), Error> {
-    ctx.say(docs.to_link()).await?;
-    Ok(())
-}
 
 #[shuttle_runtime::main]
 async fn poise(
@@ -53,17 +36,22 @@ async fn poise(
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![hello(), docs()],
+            commands: vec![hello(), docs(), elevate(), getchannel()],
             ..Default::default()
         })
         .client_settings(|f| {
             f.intents(
-                serenity::GatewayIntents::GUILDS
-                    | serenity::GatewayIntents::GUILD_MESSAGES
-                    | serenity::GatewayIntents::MESSAGE_CONTENT,
+                GatewayIntents::GUILDS
+                    | GatewayIntents::GUILD_MESSAGES
+                    | GatewayIntents::MESSAGE_CONTENT,
             )
             .event_handler(Bot { pool: pool2 })
         })
+        .intents(
+            GatewayIntents::GUILDS
+                | GatewayIntents::GUILD_MESSAGES
+                | GatewayIntents::MESSAGE_CONTENT,
+        )
         .token(discord_token)
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
