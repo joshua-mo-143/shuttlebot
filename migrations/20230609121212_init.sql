@@ -1,17 +1,17 @@
 CREATE TABLE IF NOT EXISTS issues (
     Id SERIAL PRIMARY KEY,
-    DiscordThreadId VARCHAR NOT NULL,
+    DiscordThreadId VARCHAR UNIQUE NOT NULL,
     Origin VARCHAR NOT NULL DEFAULT 'discord',
-    SevCat CHAR NOT NULL CHECK (SevCat >= 1 AND SevCat <= 5),
+    SevCat SMALLINT NOT NULL CHECK (SevCat >= 1 AND SevCat <= 5),
     InitialMessage VARCHAR,
     FirstResponseUser VARCHAR,
-    ResolverUserId VARCHAR CHECK (Resolved = true),
+    ResolverUserId VARCHAR,
     GithubLink VARCHAR,
     Locked BOOLEAN NOT NULL DEFAULT false,
-    LockStatusChangeReason VARCHAR CHECK (Locked = true),
+    LockStatusChangeReason VARCHAR,
     Resolved BOOLEAN NOT NULL DEFAULT false,
     Created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     LastUpdated TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FirstResponseTimedate TIMESTAMP WITH TIMEZONE,
-    ResolvedTimedate TIMESTAMP WITH TIME ZONE CHECK (resolved = true)
+    FirstResponseTimedate TIMESTAMP WITH TIME ZONE,
+    ResolvedTimedate TIMESTAMP WITH TIME ZONE
 );
