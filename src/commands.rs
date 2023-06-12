@@ -73,22 +73,26 @@ pub async fn elevate(
 
             Thread::set_locked_status(ctx, true).await?;
 
-            sqlx::query(
-                "UPDATE issues
+            if let Err(e) = sqlx::query(
+                "UPDATE issues SET 
                 GithubLink = $1, 
-                Locked = true, 
-                Resolved = true,
-                ResolverUserId = $2
-                LockStatusChangeReason = 'Thread was elevated to Github issue', 
-                ResolvedTimedate = CURRENT_TIMESTAMP 
+                Locked = TRUE,
+                LockStatusChangeReason = 'Thread was elevated to GitHub issue'
                 WHERE DiscordThreadId = $3",
             )
             .bind(res.html_url.to_string())
             .bind(ctx.author().id.to_string())
             .bind(ctx.channel_id().to_string())
             .execute(&ctx.data().pool)
-            .await;
+            .await
+            {
+                error!(
+                    "Failed to update SQL record after elevating GitHub issue: {:?}",
+                    e
+                );
+            }
         }
+
         Err(e) => {
             error!("Error creating Github issue: {:?}", e);
         }
@@ -113,8 +117,8 @@ pub async fn set_locked(
     ctx.say(message).await?;
     Thread::set_locked_status(ctx, locked).await?;
 
-    sqlx::query(
-        "UPDATE issues 
+    if let Err(e) = sqlx::query(
+        "UPDATE issues SET
         Locked = $1, 
         LockStatusChangeReason = $2, 
         ResolvedTimedate = CURRENT_TIMESTAMP 
@@ -124,7 +128,14 @@ pub async fn set_locked(
     .bind(reason)
     .bind(ctx.channel_id().to_string())
     .execute(&ctx.data().pool)
-    .await;
+    .await
+    {
+        error!(
+            "Error when updating SQL record after thread lock status: {:?}",
+            e
+        );
+    }
+
     Ok(())
 }
 
@@ -139,8 +150,8 @@ pub async fn resolve(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say(message).await?;
     Thread::set_locked_status(ctx, true).await?;
 
-    sqlx::query(
-        "UPDATE issues 
+    if let Err(e) = sqlx::query(
+        "UPDATE issues SET
         Locked = true, 
         LockStatusChangeReason = 'Thread was resolved', 
         ResolvedTimedate = CURRENT_TIMESTAMP 
@@ -148,7 +159,13 @@ pub async fn resolve(ctx: Context<'_>) -> Result<(), Error> {
     )
     .bind(ctx.channel_id().to_string())
     .execute(&ctx.data().pool)
-    .await;
+    .await
+    {
+        error!(
+            "Error when updating SQL record after resolving thread: {:?}",
+            e
+        );
+    }
     Ok(())
 }
 

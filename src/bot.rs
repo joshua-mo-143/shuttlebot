@@ -1,6 +1,6 @@
 use crate::{
     commands::{docs, elevate, set_locked},
-    BotInit, Context as PoiseContext, Data,
+    BotInit, Data,
 };
 use anyhow::Error;
 use octocrab::Octocrab;
@@ -10,14 +10,12 @@ use poise::serenity_prelude::{
     Context, EventHandler, GatewayIntents, Message,
 };
 use sqlx::PgPool;
-use std::collections::HashSet;
 use tracing::{error, info};
 
-const BOT_USER_ID: &'static str = "1116377484296978452";
+const BOT_USER_ID: &str = "1116377484296978452";
 
 pub struct Bot {
     pub pool: PgPool,
-    pub unanswered_threads: HashSet<String>,
 }
 
 #[async_trait]
@@ -39,17 +37,28 @@ impl EventHandler for Bot {
         while let Some(res) = messages.clone().iter().next() {
             let message_owner = res.author.id.to_string();
 
-            if message_owner != thread_owner && message_owner != BOT_USER_ID.to_string() {
+            if message_owner != thread_owner && message_owner != *BOT_USER_ID {
                 messages_filtered.retain(|m| m.author.id.to_string() == message_owner);
 
                 if messages_filtered.len() < 2 {
-                    sqlx::query("UPDATE issues FirstResponseUser = $1 FirstResponseTimedate = CURRENT_TIMESTAMP WHERE DiscordThreadId = $2")
-                    .bind(message_owner)
+                    if let Err(e) = sqlx::query(
+                        "UPDATE issues SET
+                    FirstResponseUser = $1, 
+                    FirstResponseTimedate = CURRENT_TIMESTAMP 
+                    WHERE DiscordThreadId = $2",
+                    )
+                    .bind(&message_owner)
                     .bind(channel_id)
                     .execute(&self.pool)
-                    .await;
+                    .await
+                    {
+                        error!(
+                            "Error when updating record to show who responded first: {:?}",
+                            e
+                        );
+                    }
 
-                    info!("Created new initial message for ");
+                    info!("Created new initial message for {message_owner}");
                 }
                 break;
             }
@@ -78,39 +87,6 @@ impl EventHandler for Bot {
     }
 }
 
-pub async fn get_thread(ctx: PoiseContext<'_>) -> GuildChannel {
-    // unwrap should be fine here as channel/guild ID should always be present in the happy path
-    ctx.serenity_context()
-        .http
-        .get_channel(ctx.channel_id().into())
-        .await
-        .unwrap()
-        .guild()
-        .unwrap()
-}
-
-pub async fn get_thread_serenity(ctx: &Context, channel_id: u64) -> GuildChannel {
-    // unwrap should be fine here as channel/guild ID should always be present in the happy path
-    ctx.http
-        .get_channel(channel_id)
-        .await
-        .unwrap()
-        .guild()
-        .unwrap()
-}
-
-pub async fn lock_thread(ctx: PoiseContext<'_>) -> Result<(), Error> {
-    if let Err(e) = get_thread(ctx)
-        .await
-        .edit_thread(ctx.serenity_context().http.clone(), |f| f.locked(true))
-        .await
-    {
-        error!("Couldn't lock thread: {:?}", e);
-    }
-
-    Ok(())
-}
-
 pub async fn init_discord_bot(
     discord_token: String,
     pool: PgPool,
@@ -123,17 +99,7 @@ pub async fn init_discord_bot(
             commands: vec![docs(), elevate(), set_locked()],
             ..Default::default()
         })
-        .client_settings(|f| {
-            f.intents(
-                GatewayIntents::GUILDS
-                    | GatewayIntents::GUILD_MESSAGES
-                    | GatewayIntents::MESSAGE_CONTENT,
-            )
-            .event_handler(Bot {
-                pool: pool2,
-                unanswered_threads: HashSet::new(),
-            })
-        })
+        .client_settings(|f| f.event_handler(Bot { pool: pool2 }))
         .intents(
             GatewayIntents::GUILDS
                 | GatewayIntents::GUILD_MESSAGES
