@@ -1,12 +1,13 @@
 use octocrab::Octocrab;
-use shuttle_poise::ShuttlePoise;
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 mod bot;
 mod commands;
+mod router;
 mod utils;
 
 use bot::init_discord_bot;
+use router::init_router;
 use utils::get_secrets;
 
 pub struct Data {
@@ -14,18 +15,24 @@ pub struct Data {
     crab: Octocrab,
 }
 
+struct CustomService {
+    pool: PgPool,
+    bot: Bot,
+}
+
 type Error = Box<dyn std::error::Error + Send + Sync>;
 type Context<'a> = poise::Context<'a, Data, Error>;
 
-type BotInit = std::sync::Arc<
-    poise::Framework<Data, Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>>,
+type Bot = poise::FrameworkBuilder<
+    Data,
+    Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>,
 >;
 
 #[shuttle_runtime::main]
-async fn poise(
+async fn custom(
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
     #[shuttle_shared_db::Postgres] pool: PgPool,
-) -> ShuttlePoise<Data, Error> {
+) -> Result<CustomService, shuttle_runtime::Error> {
     // Get the discord token set in `Secrets.toml`
     let (discord_token, github_token) = get_secrets(secret_store).unwrap();
 
@@ -34,7 +41,25 @@ async fn poise(
         .build()
         .expect("Failed to build Octocrab instance");
 
-    let framework = init_discord_bot(discord_token, pool, crab).await.unwrap();
+    let bot = init_discord_bot(discord_token, pool.clone(), crab)
+        .await
+        .unwrap();
 
-    Ok(framework.into())
+    Ok(CustomService { pool, bot })
+}
+
+#[shuttle_runtime::async_trait]
+impl shuttle_runtime::Service for CustomService {
+    async fn bind(mut self, addr: std::net::SocketAddr) -> Result<(), shuttle_runtime::Error> {
+        let router = init_router();
+
+        let serve_router = axum::Server::bind(&addr).serve(router.into_make_service());
+
+        tokio::select! {
+            _ = self.bot.run() => {}
+            _ = serve_router => {}
+        };
+
+        Ok(())
+    }
 }
