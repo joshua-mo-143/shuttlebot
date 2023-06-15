@@ -1,0 +1,24 @@
+[package]
+name = "bot"
+version = "0.1.0"
+edition = "2021"
+publish = false
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+axum = "0.6.18"
+jsonwebtoken = "8.3.0"
+octocrab = "0.25.1"
+poise = {version = "0.5.5", features = ["cache"] }
+serde = { version = "1.0.164", features = ["derive"] }
+shuttle-poise = "0.18.0"
+shuttle-runtime = "0.18.0"
+shuttle-secrets = "0.18.0"
+shuttle-shared-db = { version = "0.18.0", features = ["postgres", "sqlx"] }
+shuttle-static-folder = "0.18.0"
+sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "postgres", "offline"] }
+tera = "1.19.0"
+tokio = "1.28.2"
+tracing = "0.1.37"
+
