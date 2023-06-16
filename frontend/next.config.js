@@ -1,4 +1,8 @@
 /** @type {import('next').NextConfig} */
-const nextConfig = {}
+const nextConfig = {
+  // distDir: "../backend/public",
+  // output: 'export',
+  trailingSlash: true
+}
 
 module.exports = nextConfig
