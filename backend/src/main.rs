@@ -34,7 +34,7 @@ type Bot = poise::FrameworkBuilder<
 async fn custom(
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
     #[shuttle_shared_db::Postgres] pool: PgPool,
-    #[shuttle_static_folder::StaticFolder(folder = "templates")] public: PathBuf ) -> Result<CustomService, shuttle_runtime::Error> {
+    #[shuttle_static_folder::StaticFolder(folder = "public")] public: PathBuf ) -> Result<CustomService, shuttle_runtime::Error> {
 
     sqlx::migrate!().run(&pool).await.expect("Found an error while running migrations");
 
@@ -56,7 +56,7 @@ async fn custom(
 #[shuttle_runtime::async_trait]
 impl shuttle_runtime::Service for CustomService {
     async fn bind(mut self, addr: std::net::SocketAddr) -> Result<(), shuttle_runtime::Error> {
-        let router = init_router(self.public);
+        let router = init_router(self.public, self.pool);
 
         let serve_router = axum::Server::bind(&addr).serve(router.into_make_service());
 

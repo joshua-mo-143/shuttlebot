@@ -18,12 +18,17 @@ type EventError = Box<dyn std::error::Error + Send + Sync>;
 async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(), EventError> {
     match event {
         Event::ThreadCreate { thread, .. } => {
-            let thread_id: String = thread.id.to_string();
-
+        let thread_url = {
+            format!(
+                "https://discord.com/channels/{}/{}",
+                thread.guild_id,
+            thread.id
+            )
+        };
+    
             if let Err(e) =
-                sqlx::query("INSERT INTO issues (DiscordThreadId, SevCat) VALUES ($1, $2)")
-                    .bind(thread_id)
-                    .bind(5)
+                sqlx::query("INSERT INTO issues (DiscordThreadLink) VALUES ($1)")
+                    .bind(thread_url)
                     .execute(&data.pool)
                     .await
             {
@@ -31,14 +36,39 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
             }
         }
         Event::Message { new_message, .. } => {
-            let channel_id = new_message.channel_id.to_string();
-
+            
+        let thread_url = {
+            format!(
+                "https://discord.com/channels/{}/{}",
+                new_message.guild_id.unwrap(),
+            new_message.id
+            )
+        };
+            
             let mut messages = new_message
                 .channel_id
                 .messages(ctx.http.clone(), |message| message)
                 .await
                 .unwrap();
             messages.reverse();
+
+            if messages.len() == 1 {
+            let initial_message = messages.first().unwrap();
+            let (author, contents) = (initial_message.author.name.to_owned(), initial_message.content.to_owned());
+                
+            sqlx::query("UPDATE issues SET
+                    OriginalPoster = $1, 
+                    InitialMessage = $2 
+                    WHERE DiscordThreadLink = $3")
+                .bind(author)
+                .bind(contents)
+                .bind(&thread_url)
+                .execute(&data.pool)
+                .await.expect("Failed to update initial message for an issue :(");
+
+            return Ok(())
+        }
+
 
             let mut messages_filtered = messages.clone();
 
@@ -55,9 +85,9 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
             let msg_iter = messages.clone().into_iter();
 
             for res in msg_iter {
-                let message_owner = res.author.id.to_string();
+                let message_owner = res.author.name.to_string();
 
-                if message_owner != thread_owner.id.to_string() {
+                if message_owner != thread_owner.name {
                     messages_filtered.retain(|m| m.author.id.to_string() == message_owner);
 
                     if messages_filtered.len() < 2 && hsstr.len() < 2 {
@@ -68,7 +98,7 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                     WHERE DiscordThreadId = $2",
                         )
                         .bind(&message_owner)
-                        .bind(channel_id)
+                        .bind(thread_url)
                         .execute(&data.pool)
                         .await
                         {
