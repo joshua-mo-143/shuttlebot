@@ -1,5 +1,5 @@
 use crate::{
-    commands::{docs, elevate, set_locked, resolve, set_severity},
+    commands::{docs, elevate, resolve, set_locked, set_severity},
     Bot, Data,
 };
 use anyhow::Error;
@@ -18,33 +18,30 @@ type EventError = Box<dyn std::error::Error + Send + Sync>;
 async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(), EventError> {
     match event {
         Event::ThreadCreate { thread, .. } => {
-        let thread_url = {
-            format!(
-                "https://discord.com/channels/{}/{}",
-                thread.guild_id,
-            thread.id
-            )
-        };
-    
-            if let Err(e) =
-                sqlx::query("INSERT INTO issues (DiscordThreadLink) VALUES ($1)")
-                    .bind(thread_url)
-                    .execute(&data.pool)
-                    .await
+            let thread_url = {
+                format!(
+                    "https://discord.com/channels/{}/{}",
+                    thread.guild_id, thread.id
+                )
+            };
+
+            if let Err(e) = sqlx::query("INSERT INTO issues (DiscordThreadLink) VALUES ($1)")
+                .bind(thread_url)
+                .execute(&data.pool)
+                .await
             {
                 error!("Error inserting issue to db while creating new helpthread record: {e:?}");
             }
         }
         Event::Message { new_message, .. } => {
-            
-        let thread_url = {
-            format!(
-                "https://discord.com/channels/{}/{}",
-                new_message.guild_id.unwrap(),
-            new_message.id
-            )
-        };
-            
+            let thread_url = {
+                format!(
+                    "https://discord.com/channels/{}/{}",
+                    new_message.guild_id.unwrap(),
+                    new_message.id
+                )
+            };
+
             let mut messages = new_message
                 .channel_id
                 .messages(ctx.http.clone(), |message| message)
@@ -53,22 +50,27 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
             messages.reverse();
 
             if messages.len() == 1 {
-            let initial_message = messages.first().unwrap();
-            let (author, contents) = (initial_message.author.name.to_owned(), initial_message.content.to_owned());
-                
-            sqlx::query("UPDATE issues SET
+                let initial_message = messages.first().unwrap();
+                let (author, contents) = (
+                    initial_message.author.name.to_owned(),
+                    initial_message.content.to_owned(),
+                );
+
+                sqlx::query(
+                    "UPDATE issues SET
                     OriginalPoster = $1, 
                     InitialMessage = $2 
-                    WHERE DiscordThreadLink = $3")
+                    WHERE DiscordThreadLink = $3",
+                )
                 .bind(author)
                 .bind(contents)
                 .bind(&thread_url)
                 .execute(&data.pool)
-                .await.expect("Failed to update initial message for an issue :(");
+                .await
+                .expect("Failed to update initial message for an issue :(");
 
-            return Ok(())
-        }
-
+                return Ok(());
+            }
 
             let mut messages_filtered = messages.clone();
 
@@ -95,7 +97,7 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                             "UPDATE issues SET
                     FirstResponseUser = $1, 
                     FirstResponseTimedate = CURRENT_TIMESTAMP 
-                    WHERE DiscordThreadId = $2",
+                    WHERE DiscordThreadLink = $2",
                         )
                         .bind(&message_owner)
                         .bind(thread_url)

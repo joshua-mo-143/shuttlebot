@@ -19,7 +19,7 @@ pub struct Data {
 struct CustomService {
     pool: PgPool,
     bot: Bot,
-    public: PathBuf
+    public: PathBuf,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -34,9 +34,12 @@ type Bot = poise::FrameworkBuilder<
 async fn custom(
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
     #[shuttle_shared_db::Postgres] pool: PgPool,
-    #[shuttle_static_folder::StaticFolder(folder = "public")] public: PathBuf ) -> Result<CustomService, shuttle_runtime::Error> {
-
-    sqlx::migrate!().run(&pool).await.expect("Found an error while running migrations");
+    #[shuttle_static_folder::StaticFolder(folder = "public")] public: PathBuf,
+) -> Result<CustomService, shuttle_runtime::Error> {
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Found an error while running migrations");
 
     // Get the discord token set in `Secrets.toml`
     let (discord_token, github_token) = get_secrets(secret_store).unwrap();
