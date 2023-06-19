@@ -45,7 +45,7 @@ impl DocsLinks {
 }
 
 /// Elevate a Discord help thread to a GitHub issue. This locks the thread.
-#[poise::command(slash_command)]
+#[poise::command(slash_command, check = "check_role")]
 pub async fn elevate(ctx: Context<'_>) -> Result<(), Error> {
     let topic = Thread::get(ctx).await.name;
 
@@ -119,11 +119,12 @@ pub async fn elevate(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn always_true(ctx: Context<'_>) -> Result<bool, Error> {
+async fn check_role(ctx: Context<'_>) -> Result<bool, Error> {
     let Ok(res) = ctx.author().has_role(
         ctx.http(),
-        1072109825674203136,
-        1117201936425435156).await else {
+        ctx.data().server_id.parse::<u64>().unwrap(),
+        ctx.data().staff_role_id.parse::<u64>().unwrap()
+    ).await else {
          {error!("Something went wrong trying to check permissions.");
         return Ok(false)}
     };
@@ -135,7 +136,7 @@ async fn always_true(ctx: Context<'_>) -> Result<bool, Error> {
 }
 
 /// (un)Lock a thread
-#[poise::command(slash_command, check = "always_true")]
+#[poise::command(slash_command, check = "check_role")]
 pub async fn set_locked(
     ctx: Context<'_>,
     #[description = "Set true to lock, set false to unlock"] locked: bool,
@@ -223,7 +224,7 @@ pub async fn resolve(
     Ok(())
 }
 
-#[poise::command(slash_command, ephemeral)]
+#[poise::command(slash_command, ephemeral, check = "check_role")]
 pub async fn set_severity(
     ctx: Context<'_>,
     #[description = "Severity level"] severity: SeverityCategory,

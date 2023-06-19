@@ -17,7 +17,11 @@ cargo binstall cargo-shuttle
 
 You'll also need Docker to get a local database provisioned to yourself, which you can find instructions on how to install [here](https://docs.docker.com/get-docker/).
 
-Clone the repository then simply run `cargo shuttle run`. 
+You'll need to insert some Secrets into a `Secrets.toml` file (see `Secrets.toml.example` for details).
+
+Before you run the backend folder you'll probably want to compile the frontend assets which you can do by simply going to the frontend folder and using `npm run build`.
+
+When you're ready, simply run `cargo start` from the project root or `cargo shuttle run` from the backend folder!
 
 ### Features
 
@@ -27,18 +31,34 @@ Clone the repository then simply run `cargo shuttle run`.
 
   * Has command for elevating Discord threads to Github issues (locks Discord thread, opens Github issue)
 
+    * This bot supports using Github Apps.
+
+  * Has commands for (un)locking threads and setting the severity of an issue.
+
+* Visual dashboard
+
+  * Pull statistics for ticketing (who solved the most tickets, most common ticket category, etc)
+
+  * General issues
+
 ### Todo
 
-* Dashboard to pull statistics for ticketing (who solved the most tickets, most common ticket category, etc)
+* Github OAuth for dashboard
 
+* Search filter for issues
+
+* Github web hooks
 
 ### Dependencies
 
 | Dependency        | Reason for Dependency                                             |
 |-------------------|-------------------------------------------------------------------|
 | anyhow            | Easy errors. Might change this at some point.                     |
+| axum              | An easy to use framework with familiar syntax.                    |
+| jsonwebtoken      | Making JWT to be able to do app auth (for GitHub app)             |
 | octocrab          | Interact with GitHub API easily                                   |
 | poise             | Discord bot framework (built on Serenity)                         |
+| serde             | (de)Serialization of structs for JSON responses                   |
 | shuttle-runtime   | Shuttle dependency                                                |
 | shuttle-secrets   | Environmental variables on Shuttle                                |
 | shuttle-poise     | Allows the Shuttle runtime to use Poise                           |
