@@ -4,16 +4,20 @@ use sqlx::PgPool;
 use std::path::PathBuf;
 mod bot;
 mod commands;
+mod github;
 mod router;
 mod utils;
 
 use bot::init_discord_bot;
+use github::init_github_app;
 use router::init_router;
 use utils::get_secrets;
 
 pub struct Data {
     pool: PgPool,
     crab: Octocrab,
+    staff_role_id: String,
+    server_id: String
 }
 
 struct CustomService {
@@ -42,14 +46,16 @@ async fn custom(
         .expect("Found an error while running migrations");
 
     // Get the discord token set in `Secrets.toml`
-    let (discord_token, github_token) = get_secrets(secret_store).unwrap();
+    let secrets = get_secrets(secret_store).unwrap();
 
-    let crab = Octocrab::builder()
-        .personal_token(github_token)
-        .build()
-        .expect("Failed to build Octocrab instance");
+    let crab = init_github_app(secrets.github_app_id, secrets.github_app_pem_key).await.unwrap();
 
-    let bot = init_discord_bot(discord_token, pool.clone(), crab)
+    let bot = init_discord_bot(&secrets.discord_token,
+        pool.clone(), 
+        crab,
+        secrets.discord_server_staff_role_id,
+        secrets.discord_server_id
+    )
         .await
         .unwrap();
 

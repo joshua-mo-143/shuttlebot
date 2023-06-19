@@ -47,14 +47,14 @@ struct LastFourWeeksStats {
     #[serde(rename(serialize = "bestSolver"))]
     best_solver: Option<String>,
     #[serde(rename(serialize = "bestFirstResponder"))]
-    best_first_responder: Option<String>
+    best_first_responder: Option<String>,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
 struct IssuesOpenedLastWeek {
     day: String,
     #[serde(rename(serialize = "totalIssuesPerDay"))]
-    total_issues_per_day: i64
+    total_issues_per_day: i64,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -96,7 +96,8 @@ async fn health() -> impl IntoResponse {
 async fn get_issues(
     State(state): State<AppState>,
 ) -> Result<(StatusCode, Json<Vec<Issue>>), impl IntoResponse> {
-    match sqlx::query_as::<_, Issue>("SELECT 
+    match sqlx::query_as::<_, Issue>(
+        "SELECT 
         OriginalPoster as original_poster,
         DiscordThreadLink as discord_thread_link,
         SevCat as severity, 
@@ -105,7 +106,7 @@ async fn get_issues(
         ResolverUser as resolved_by,
         CAST(DATE(created) as varchar) as creation_date
         from issues
-        "
+        ",
     )
     .fetch_all(&state.pool)
     .await
@@ -115,7 +116,9 @@ async fn get_issues(
     }
 }
 
-async fn dashboard(State(state): State<AppState>) -> Result<(StatusCode, Json<DashboardData>), impl IntoResponse> {
+async fn dashboard(
+    State(state): State<AppState>,
+) -> Result<(StatusCode, Json<DashboardData>), impl IntoResponse> {
     // Data we want:
     // Count of how many tickets were opened DONE
     // Count of how many tickets were elevated to Github Issues DONE
@@ -125,7 +128,7 @@ async fn dashboard(State(state): State<AppState>) -> Result<(StatusCode, Json<Da
     // Who responded first to most tickets DONE
     // On a weekly basis
 
-     let Ok(last_four_weeks_stats) = sqlx::query_as::<_, LastFourWeeksStats>("SELECT
+    let Ok(last_four_weeks_stats) = sqlx::query_as::<_, LastFourWeeksStats>("SELECT
         CONCAT(to_date(concat(DATE_PART('year', date(created)), DATE_PART('week', date(created))), 'iyyyiw'),' - ',to_date(concat('2023', DATE_PART('week', date(created))), 'yyyyww') + 6) AS date_range,
         COUNT(*) as total_issues,
         (SELECT COUNT(*) FROM issues WHERE githubLink IS NOT NULL) as total_elevated_issues,
@@ -142,7 +145,6 @@ async fn dashboard(State(state): State<AppState>) -> Result<(StatusCode, Json<Da
         .await else {
         return Err((StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong while getting the last 4 weeks' stats.".to_string()))
     };
-    
 
     let Ok(issues_awaiting_response) = sqlx::query_as::<_, IssuesAwaitingResponse>("SELECT
         (SELECT COUNT(*) FROM issues WHERE FirstResponseUser IS NULL) as unanswered_threads,
@@ -174,9 +176,9 @@ async fn dashboard(State(state): State<AppState>) -> Result<(StatusCode, Json<Da
         .await else {return Err((StatusCode::INTERNAL_SERVER_ERROR, "An error occurred while getting the number of issues opened last week".to_string()))};
 
     let dashboard_data = DashboardData {
-    last_four_weeks_stats,
-    issues_awaiting_response,
-    issues_opened_last_week
+        last_four_weeks_stats,
+        issues_awaiting_response,
+        issues_opened_last_week,
     };
 
     Ok((StatusCode::OK, Json(dashboard_data)))

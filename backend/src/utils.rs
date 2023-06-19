@@ -4,20 +4,39 @@ use poise::serenity_prelude::model::channel::GuildChannel;
 use shuttle_secrets::SecretStore;
 use tracing::error;
 
-pub fn get_secrets(secrets: SecretStore) -> Result<(String, String), anyhow::Error> {
-    let discord_token = if let Some(discord_token) = secrets.get("DISCORD_TOKEN") {
-        discord_token
-    } else {
-        return Err(anyhow!("'DISCORD_TOKEN' was not found"));
-    };
+pub struct Secrets {
+    pub discord_token: String,
+    pub github_app_pem_key: String,
+    pub github_personal_token: String,
+    pub github_app_id: String,
+    pub discord_server_staff_role_id: String,
+    pub discord_server_id: String,
+}
 
-    let github_token = if let Some(github_token) = secrets.get("GITHUB_TOKEN") {
-        github_token
-    } else {
-        return Err(anyhow!("'GITHUB_TOKEN' was not found"));
-    };
+pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
+    let discord_token = get_secret("DISCORD_TOKEN", secrets.clone()).unwrap();
+    let github_app_pem_key = get_secret("GITHUB_APP_PRIVATE_KEY", secrets.clone()).unwrap();
+    let github_personal_token = get_secret("GITHUB_PERSONAL_TOKEN", secrets.clone()).unwrap();
+    let github_app_id = get_secret("GITHUB_APP_ID", secrets.clone()).unwrap();
+    let discord_server_staff_role_id = get_secret("DISCORD_SERVER_STAFF_ROLE_ID", secrets.clone()).unwrap();
+    let discord_server_id = get_secret("DISCORD_SERVER_ID", secrets).unwrap();
 
-    Ok((discord_token, github_token))
+    Ok(Secrets {
+        discord_token,
+        github_app_pem_key,
+        github_personal_token,
+        github_app_id,
+        discord_server_staff_role_id,
+        discord_server_id
+    })
+}
+
+fn get_secret(token: &str, secrets: SecretStore) -> Result<String, anyhow::Error> {
+    if let Some(secret) = secrets.get(token) {
+        Ok(secret)
+    } else {
+        Err(anyhow!(format!("'{token}' was not found")))
+    }
 }
 
 pub struct Thread {}
