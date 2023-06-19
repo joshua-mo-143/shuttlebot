@@ -11,8 +11,6 @@ use std::collections::HashSet;
 
 use tracing::{error, info};
 
-const _BOT_USER_ID: &str = "1116377484296978452";
-
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
 async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(), EventError> {
@@ -122,9 +120,11 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
 }
 
 pub async fn init_discord_bot(
-    discord_token: String,
+    discord_token: &str,
     pool: PgPool,
     crab: Octocrab,
+    staff_role_id: String,
+    server_id: String
 ) -> Result<Bot, Error> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -141,7 +141,7 @@ pub async fn init_discord_bot(
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data { pool, crab })
+                Ok(Data { pool, crab, staff_role_id, server_id })
             })
         });
 

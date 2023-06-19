@@ -1,0 +1,4 @@
+[alias]
+start = "shuttle run --working-directory backend"
+deploy = "shuttle deploy --allow-dirty"
+restart = "shuttle project restart --idle-minutes 0"
