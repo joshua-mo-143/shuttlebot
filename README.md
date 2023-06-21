@@ -67,13 +67,15 @@ When you're ready, simply run `cargo start` from the project root or `cargo shut
 
   * General issues
 
-### Todo
+  * Github Oauth
 
-* Github OAuth for dashboard
+### Todo
 
 * Search filter for issues
 
 * Github web hooks
+
+* Background task to delete expired sessions from shuttle-persist
 
 ### Dependencies
 
