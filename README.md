@@ -21,6 +21,15 @@ You'll need a [Github App](https://docs.github.com/en/apps/creating-github-apps/
 
 You'll also need a Discord app with the following bot permissions:
 
+* Send Messages
+
+* Send Messages in Threads
+
+* Manage Threads
+
+* Read Message History
+
+This list may be updated as required.
 
 
 ### How to Use
