@@ -14,12 +14,12 @@ import {
 import { Line } from 'react-chartjs-2';
 
 type Props = {
-	data: IssuesOpenedLastWeek[]
+	data: IssuesOpenedLastWeek[] | undefined
 }
 
 interface IssuesOpenedLastWeek {
   day: string,
-  totalIssuesPerDay: i32,
+  totalIssuesPerDay: number,
 }
 
 

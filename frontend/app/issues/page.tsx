@@ -39,7 +39,7 @@ export default function Issues() {
 	
 		<div>
 			<h1 className="text-2xl text-center">Issues</h1>
-			{data.length > 0 ?
+			{data ?
 				<table className="text-center">
 				<thead>
 					<tr>

@@ -8,16 +8,23 @@ publish = false
 [dependencies]
 anyhow = "1.0.71"
 axum = "0.6.18"
+axum-extra = { version = "0.7.4", features = ["cookie", "cookie-private"] }
+axum-macros = "0.3.7"
 jsonwebtoken = "8.3.0"
 octocrab = "0.25.1"
 poise = { version = "0.5.5", features = [] }
+reqwest = "0.11.18"
 serde = { version = "1.0.164", features = ["derive"] }
-shuttle-poise = "0.18.0"
-shuttle-runtime = "0.18.0"
-shuttle-secrets = "0.18.0"
-shuttle-shared-db = { version = "0.18.0", features = ["postgres", "sqlx"] }
-shuttle-static-folder = "0.18.0"
+serde_json = "1.0.97"
+shuttle-persist = "0.19.0"
+shuttle-poise = "0.19.0"
+shuttle-runtime = "0.19.0"
+shuttle-secrets = "0.19.0"
+shuttle-shared-db = { version = "0.19.0", features = ["postgres", "sqlx"] }
+shuttle-static-folder = "0.19.0"
 sqlx = { version = "0.6.3", features = ["runtime-tokio-native-tls", "postgres"] }
+time = "0.3.22"
 tokio = "1.28.2"
 tower-http = { version = "0.4.0", features = ["fs", "cors"] }
+tracing = "0.1.37"
 

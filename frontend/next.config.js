@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // distDir: "../backend/public",
-  // output: 'export',
+  distDir: "../backend/public",
+  output: 'export',
   trailingSlash: true
 }
 

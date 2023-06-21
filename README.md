@@ -4,7 +4,7 @@ This is a web service that facilitates support ticket management on Discord foru
 
 Built with love in Rust.
 
-### How to Use
+### Pre-reqs to Use
 
 Looking to run this for yourself? You'll need `cargo-shuttle`, which you can install with the following:
 
@@ -17,7 +17,33 @@ cargo binstall cargo-shuttle
 
 You'll also need Docker to get a local database provisioned to yourself, which you can find instructions on how to install [here](https://docs.docker.com/get-docker/).
 
-You'll need to insert some Secrets into a `Secrets.toml` file (see `Secrets.toml.example` for details).
+You'll need a [Github App](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app) and a [Github Oauth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app).
+
+You'll also need a Discord app with the following bot permissions:
+
+
+
+### How to Use
+
+Clone the repo then `cd` to it: 
+
+```sh
+git clone https://github.com/joshua-mo-143/shuttlebot.git
+cd shuttlebot
+```
+
+You'll need to insert some Secrets into a `Secrets.toml` file (see `Secrets.toml.example` for details). Details of each secret can be found below:
+
+| Secret name                  | Usage                                                                                                                                                         |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| DISCORD_TOKEN                | Used to be able to set up a Discord bot (REQUIRED)                                                                                                            |
+| GITHUB_PERSONAL_TOKEN        | Used to authenticate Octocrab so you can interact with the Github API.  This is set in the app to be the fallback if the PEM key file contents doesn't exist. |
+| GITHUB_APP_ID                | ID for your Github app (see [this](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/registering-a-github-app)).                  |
+| DISCORD_SERVER_STAFF_ROLE_ID | The ID of the required role for users to execute certain commands (currently on every command except the Docs command).                                       |
+| DISCORD_SERVER_ID            | The Guild ID of a Discord channel (basically, the server ID).                                                                                                 |
+| GITHUB_OAUTH_ID              | The ID of your Github Oauth app.                                                                                                                              |
+| GITHUB_OAUTH_SECRET          | The secret for your Github Oauth app.                                                                                                                         |
+| GITHUB_APP_PRIVATE_KEY       | The contents of the RSA key from the PEM file you get when creating a secret for a Github app.                                                                |
 
 Before you run the backend folder you'll probably want to compile the frontend assets which you can do by simply going to the frontend folder and using `npm run build`.
 
