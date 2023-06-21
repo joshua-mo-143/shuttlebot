@@ -1,9 +1,19 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Json, Router};
+use axum::{
+    extract::{FromRef, State},
+    http::StatusCode,
+    response::IntoResponse,
+    routing::get,
+    Json, Router,
+};
+use axum_extra::extract::cookie::Key;
 use serde::Serialize;
+use shuttle_persist::PersistInstance;
 use sqlx::PgPool;
 use std::path::PathBuf;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
+
+use crate::oauth::github_callback;
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct Issue {
@@ -24,11 +34,11 @@ pub struct Issue {
 
 #[derive(Serialize)]
 pub struct DashboardData {
-    #[serde(rename(serialize = "lastFourWeekStats"))]
+    #[serde(rename(serialize = "lastFourWeeksStats"))]
     last_four_weeks_stats: Vec<LastFourWeeksStats>,
     #[serde(rename(serialize = "issuesAwaitingResponse"))]
     issues_awaiting_response: IssuesAwaitingResponse,
-    #[serde(rename(serialize = "issuedOpenedLastWeek"))]
+    #[serde(rename(serialize = "issuesOpenedLastWeek"))]
     issues_opened_last_week: Vec<IssuesOpenedLastWeek>,
 }
 
@@ -68,19 +78,43 @@ struct IssuesAwaitingResponse {
 }
 
 #[derive(Clone)]
-struct AppState {
-    pool: PgPool,
+pub struct AppState {
+    pub pool: PgPool,
+    pub oauth_id: String,
+    pub oauth_secret: String,
+    pub key: Key,
+    pub persist: PersistInstance,
 }
 
-pub fn init_router(public: PathBuf, pool: PgPool) -> Router {
+// this impl tells `SignedCookieJar` how to access the key from our state
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.key.clone()
+    }
+}
+
+pub fn init_router(
+    public: PathBuf,
+    pool: PgPool,
+    oauth_id: String,
+    oauth_secret: String,
+    persist: PersistInstance,
+) -> Router {
     let cors = CorsLayer::new().allow_methods(Any).allow_origin(Any);
 
-    let state = AppState { pool };
+    let state = AppState {
+        pool,
+        oauth_id,
+        oauth_secret,
+        key: Key::generate(),
+        persist,
+    };
 
     Router::new()
         .route("/health", get(health))
         .route("/api/issues", get(get_issues))
         .route("/api/dashboard", get(dashboard))
+        .route("/github/callback", get(github_callback))
         .with_state(state)
         .nest_service(
             "/",

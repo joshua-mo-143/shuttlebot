@@ -23,18 +23,18 @@ interface LastFourWeeksStats {
 
 interface IssuesOpenedLastWeek {
   day: string,
-  totalIssuesPerDay: i32,
+  totalIssuesPerDay: number,
 }
 
 interface IssuesAwaitingResponse {
-  unansweredThreads: i32,
-  unresolvedIssues: i32,
-  unresolvedGithubIssues: i32
+  unansweredThreads: number,
+  unresolvedIssues: number,
+  unresolvedGithubIssues: number
 }
 
 export default function Home() {
 
-  const [data, setData] = React.useState<DashboardData>({});
+  const [data, setData] = React.useState<DashboardData>();
 
 	React.useEffect(() => {
 		const meme = async () => {
@@ -63,15 +63,15 @@ export default function Home() {
       <h2 className="text-left text-2xl">Currently Outstanding</h2>
         <div className="grid grid-cols-3 grid-rows-1 gap-4 text-sm">
           <div className="col-span-1">
-              <p className="text-5xl">{data.issuesAwaitingResponse?.unansweredThreads}</p>
+              <p className="text-5xl">{data?.issuesAwaitingResponse?.unansweredThreads}</p>
             <p>Unanswered Issues</p>
             </div>
           <div className="col-span-1">
-            <p className="text-5xl">{data.issuesAwaitingResponse?.unresolvedIssues}</p>
+            <p className="text-5xl">{data?.issuesAwaitingResponse?.unresolvedIssues}</p>
             <p>Unresolved Issues</p>
             </div>
           <div className="col-span-1">
-            <p className="text-5xl">{data.issuesAwaitingResponse?.unresolvedGithubIssues}</p>
+            <p className="text-5xl">{data?.issuesAwaitingResponse?.unresolvedGithubIssues}</p>
             <p>Unresolved GitHub Issues</p>
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function Home() {
               </tr>
             </thead>
             <tbody>
-              {data.lastFourWeekStats?.map((item) => (
+              {data?.lastFourWeeksStats?.map((item) => (
                 <tr key={item.dateRange}>
                   <td className="px-2">{item.dateRange}</td>
                   <td className="px-2">{item.totalIssues}</td>
@@ -100,7 +100,7 @@ export default function Home() {
                   <td className="px-2">{item.totalResolvedIssues}</td>
                   <td className="px-2">{item.averageResponseTime}</td>
                   <td className="px-2">{item.bestSolver ? item.bestSolver : "No issues solved yet"}</td>
-                  <td className="px-2">{item.bestFirstResponder ? item.bestFirstREsponder : "No help threads responded to yet :("}</td>
+                  <td className="px-2">{item.bestFirstResponder ? item.bestFirstResponder : "No help threads responded to yet :("}</td>
                   </tr>
               ))}
             </tbody>
@@ -109,7 +109,7 @@ export default function Home() {
 
       <div className="p-4 px-10 border border-2 rounded-md w-[100%] flex flex-col gap-4 col-span-1">
       <h2 className="text-center text-2xl">Issues Opened over last 7 Days</h2>
-          <Chart data={data.issuedOpenedLastWeek}/>
+          <Chart data={data?.issuesOpenedLastWeek}/>
       </div>
         
       <div className="p-4 px-10 border border-2 rounded-md w-[100%] flex flex-col gap-4 col-span-1">
@@ -134,6 +134,7 @@ export default function Home() {
           </div>
       </div>
       </div>
+      <Link href="https://github.com/login/oauth/authorize?scope=user:email&client_id=159291045e7af4248300">Log In with Github</Link>
   </div>
   )
 }

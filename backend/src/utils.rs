@@ -11,6 +11,8 @@ pub struct Secrets {
     pub github_app_id: String,
     pub discord_server_staff_role_id: String,
     pub discord_server_id: String,
+    pub oauth_id: String,
+    pub oauth_secret: String,
 }
 
 pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
@@ -18,8 +20,11 @@ pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
     let github_app_pem_key = get_secret("GITHUB_APP_PRIVATE_KEY", secrets.clone()).unwrap();
     let github_personal_token = get_secret("GITHUB_PERSONAL_TOKEN", secrets.clone()).unwrap();
     let github_app_id = get_secret("GITHUB_APP_ID", secrets.clone()).unwrap();
-    let discord_server_staff_role_id = get_secret("DISCORD_SERVER_STAFF_ROLE_ID", secrets.clone()).unwrap();
-    let discord_server_id = get_secret("DISCORD_SERVER_ID", secrets).unwrap();
+    let discord_server_staff_role_id =
+        get_secret("DISCORD_SERVER_STAFF_ROLE_ID", secrets.clone()).unwrap();
+    let discord_server_id = get_secret("DISCORD_SERVER_ID", secrets.clone()).unwrap();
+    let oauth_id = get_secret("GITHUB_OAUTH_ID", secrets.clone()).unwrap();
+    let oauth_secret = get_secret("GITHUB_OAUTH_SECRET", secrets).unwrap();
 
     Ok(Secrets {
         discord_token,
@@ -27,7 +32,9 @@ pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
         github_personal_token,
         github_app_id,
         discord_server_staff_role_id,
-        discord_server_id
+        discord_server_id,
+        oauth_id,
+        oauth_secret,
     })
 }
 
