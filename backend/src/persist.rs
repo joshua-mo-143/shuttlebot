@@ -9,7 +9,6 @@ struct UserSessions {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct UserSession {
-    pub name: String,
     pub session_id: String,
     pub expires_at: DateTime<Utc>,
 }
@@ -26,20 +25,7 @@ impl Persist {
             }
         };
 
-        if instance
-            .user_sessions
-            .iter()
-            .any(|user| user.name == session.name)
-        {
-            for mut user in instance.user_sessions.clone() {
-                if user.name == session.name {
-                    user.session_id = session.session_id.clone();
-                    user.expires_at = session.expires_at;
-                }
-            }
-        } else {
-            instance.user_sessions.push(session);
-        }
+        instance.user_sessions.push(session);
 
         persist
             .save::<UserSessions>("usersessions", instance)
@@ -47,7 +33,10 @@ impl Persist {
         Ok(())
     }
 
-    pub fn delete_record(persist: PersistInstance, name: String) -> Result<(), anyhow::Error> {
+    pub fn delete_record(
+        persist: PersistInstance,
+        session_id: String,
+    ) -> Result<(), anyhow::Error> {
         let mut instance = if let Ok(res) = persist.load::<UserSessions>("usersessions") {
             res
         } else {
@@ -57,7 +46,7 @@ impl Persist {
         let new_instance = instance
             .user_sessions
             .into_iter()
-            .filter(|user| user.name == name)
+            .filter(|user| user.session_id == session_id)
             .collect::<Vec<UserSession>>();
 
         instance.user_sessions = new_instance;

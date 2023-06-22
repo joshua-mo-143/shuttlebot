@@ -3,6 +3,7 @@ use shuttle_persist::PersistInstance;
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use std::path::PathBuf;
+use tokio::time::{sleep, Duration};
 
 mod bot;
 mod commands;
@@ -16,6 +17,7 @@ mod utils;
 use bot::init_discord_bot;
 use database::DBQueries;
 use github::Github;
+use persist::Persist;
 use router::init_router;
 use utils::get_secrets;
 
@@ -100,7 +102,7 @@ impl shuttle_runtime::Service for CustomService {
             self.db,
             self.oauth_id,
             self.oauth_secret,
-            self.persist,
+            self.persist.clone(),
             self.crab,
         );
 
@@ -108,9 +110,19 @@ impl shuttle_runtime::Service for CustomService {
 
         tokio::select! {
             _ = self.bot.run() => {},
-            _ = serve_router => {}
+            _ = serve_router => {},
+            _ = remove_expired_sessions(self.persist) => {}
         };
 
         Ok(())
+    }
+}
+
+pub async fn remove_expired_sessions(persist: PersistInstance) -> Result<(), anyhow::Error> {
+    loop {
+        Persist::filter_records(persist.clone())
+            .expect("Error occurred while filtering out expired sessions");
+
+        sleep(Duration::from_secs(300)).await;
     }
 }

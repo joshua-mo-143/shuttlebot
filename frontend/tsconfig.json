@@ -34,8 +34,6 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "../backend/public/types/**/*.ts"
-    // "../backend/public/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
