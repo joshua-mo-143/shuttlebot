@@ -1,11 +1,11 @@
 use axum::{
     extract::{Query, State},
-    response::{IntoResponse, Redirect},
+    http::{HeaderName, HeaderValue, StatusCode},
+    response::{IntoResponse, IntoResponseParts, ResponseParts},
     Json,
 };
 use axum_extra::extract::cookie::{Cookie, PrivateCookieJar};
 use chrono::{DateTime, Days, NaiveDateTime, Utc};
-use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use time::Duration;
@@ -55,11 +55,14 @@ pub async fn github_callback(
         .await
         .expect("Failed Github fetch request");
 
-    let json_response = post.json::<GithubCallback>().await.unwrap();
+    let json_response = post
+        .json::<GithubCallback>()
+        .await
+        .expect("Error while decoding github callback");
 
     println!("{}", json_response.access_token);
 
-    let post = ctx
+    let github_user_post = ctx
         .post("https://api.github.com/user")
         .bearer_auth(json_response.access_token.to_string())
         .header(
@@ -70,7 +73,10 @@ pub async fn github_callback(
         .await
         .expect("Failed Github fetch request");
 
-    let github_user = post.json::<GithubUser>().await.unwrap();
+    let github_user = github_user_post
+        .json::<GithubUser>()
+        .await
+        .expect("Error while decoding github user info");
 
     let cookie = Cookie::build("foo", json_response.access_token.to_string())
         .secure(true)
@@ -93,6 +99,7 @@ pub async fn github_callback(
     };
 
     (
+        StatusCode::PERMANENT_REDIRECT,
         jar.add(cookie.clone()),
         Redirect::permanent("/"),
         Json(user),
@@ -107,6 +114,7 @@ pub struct GithubUserResponse {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize)]
 struct GithubUser {
+    token_type: String,
     login: String,
     id: i64,
     node_id: String,
@@ -139,4 +147,41 @@ struct GithubUser {
     following: i32,
     created_at: String,
     updated_at: String,
+}
+#[derive(Debug, Clone)]
+pub struct Redirect {
+    status_code: StatusCode,
+    location: HeaderValue,
+}
+
+impl Redirect {
+    pub fn permanent(uri: &str) -> Self {
+        Self::with_status_code(StatusCode::PERMANENT_REDIRECT, uri)
+    }
+
+    // This is intentionally not public since other kinds of redirects might not
+    // use the `Location` header, namely `304 Not Modified`.
+    //
+    // We're open to adding more constructors upon request, if they make sense :)
+    fn with_status_code(status_code: StatusCode, uri: &str) -> Self {
+        assert!(
+            status_code.is_redirection(),
+            "not a redirection status code"
+        );
+
+        Self {
+            status_code,
+            location: HeaderValue::try_from(uri).expect("URI isn't a valid header value"),
+        }
+    }
+}
+
+impl IntoResponseParts for Redirect {
+    type Error = (StatusCode, String);
+
+    fn into_response_parts(self, mut res: ResponseParts) -> Result<ResponseParts, Self::Error> {
+        res.headers_mut().insert("LOCATION", self.location);
+
+        Ok(res)
+    }
 }

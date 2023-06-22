@@ -134,7 +134,7 @@ export default function Home() {
           </div>
       </div>
       </div>
-      <Link href="https://github.com/login/oauth/authorize?scope=user:email&client_id=159291045e7af4248300">Log In with Github</Link>
+      <Link href="https://github.com/login/oauth/authorize?client_id=a943aff4893a533b6cb9">Log In with Github</Link>
   </div>
   )
 }
