@@ -4,6 +4,11 @@ This is a web service that facilitates support ticket management on Discord foru
 
 Built with love in Rust.
 
+![](./Screenshot1.png)
+![](./Screenshot2.png)
+![](./Screenshot3.png)
+![](./Screenshot4.png)
+
 ### Pre-reqs to Use
 
 Looking to run this for yourself? You'll need `cargo-shuttle`, which you can install with the following:
@@ -76,15 +81,14 @@ When you're ready, simply run `cargo start` from the project root or `cargo shut
 
   * General issues
 
-  * Github Oauth
+  * Github Oauth (uses shuttle-persist to store session tokens)
+
+  * Background task to delete expired sessions from shuttle-persist
 
 ### Todo
 
-* Search filter for issues
-
 * Github web hooks
 
-* Background task to delete expired sessions from shuttle-persist
 
 ### Dependencies
 
