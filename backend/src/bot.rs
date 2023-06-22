@@ -1,15 +1,13 @@
 use crate::{
     commands::{docs, elevate, resolve, set_locked, set_severity},
-    Bot, Data,
+    Bot, DBQueries, Data,
 };
 use anyhow::Error;
 use octocrab::Octocrab;
 use poise::serenity_prelude::{Context, GatewayIntents};
 use poise::Event;
-use sqlx::PgPool;
 use std::collections::HashSet;
-
-use tracing::{error, info};
+use tracing::info;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -23,12 +21,13 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                 )
             };
 
-            if let Err(e) = sqlx::query("INSERT INTO issues (DiscordThreadLink) VALUES ($1)")
-                .bind(thread_url)
-                .execute(&data.pool)
+            if let Err(e) = data
+                .db
+                .clone()
+                .discord_create_issue_record(thread_url)
                 .await
             {
-                error!("Error inserting issue to db while creating new helpthread record: {e:?}");
+                return Err(format!("Error when creating a new issue record: {e}").into());
             }
         }
         Event::Message { new_message, .. } => {
@@ -54,18 +53,14 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                     initial_message.content.to_owned(),
                 );
 
-                sqlx::query(
-                    "UPDATE issues SET
-                    OriginalPoster = $1, 
-                    InitialMessage = $2 
-                    WHERE DiscordThreadLink = $3",
-                )
-                .bind(author)
-                .bind(contents)
-                .bind(&thread_url)
-                .execute(&data.pool)
-                .await
-                .expect("Failed to update initial message for an issue :(");
+                if let Err(e) = data
+                    .db
+                    .clone()
+                    .discord_update_initial_message(author, contents, thread_url)
+                    .await
+                {
+                    return Err(format!("Error when updating initial thread message: {e}").into());
+                }
 
                 return Ok(());
             }
@@ -91,20 +86,14 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                     messages_filtered.retain(|m| m.author.id.to_string() == message_owner);
 
                     if messages_filtered.len() < 2 && hsstr.len() < 2 {
-                        if let Err(e) = sqlx::query(
-                            "UPDATE issues SET
-                    FirstResponseUser = $1, 
-                    FirstResponseTimedate = CURRENT_TIMESTAMP 
-                    WHERE DiscordThreadLink = $2",
-                        )
-                        .bind(&message_owner)
-                        .bind(thread_url)
-                        .execute(&data.pool)
-                        .await
+                        if let Err(e) = data
+                            .db
+                            .clone()
+                            .discord_get_first_response(&message_owner, thread_url)
+                            .await
                         {
-                            error!(
-                                "Error when updating record to show who responded first: {:?}",
-                                e
+                            return Err(
+                                format!("Error when updating initial responder: {e}").into()
                             );
                         }
 
@@ -121,10 +110,10 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
 
 pub async fn init_discord_bot(
     discord_token: &str,
-    pool: PgPool,
+    db: DBQueries,
     crab: Octocrab,
     staff_role_id: String,
-    server_id: String
+    server_id: String,
 ) -> Result<Bot, Error> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
@@ -141,7 +130,12 @@ pub async fn init_discord_bot(
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data { pool, crab, staff_role_id, server_id })
+                Ok(Data {
+                    db,
+                    crab,
+                    staff_role_id,
+                    server_id,
+                })
             })
         });
 

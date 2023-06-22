@@ -44,18 +44,28 @@ impl DocsLinks {
     }
 }
 
+async fn check_role(ctx: Context<'_>) -> Result<bool, Error> {
+    let Ok(res) = ctx.author().has_role(
+        ctx.http(),
+        ctx.data().server_id.parse::<u64>().unwrap(),
+        ctx.data().staff_role_id.parse::<u64>().unwrap()
+    ).await else {
+         {error!("Something went wrong trying to check permissions.");
+        return Ok(false)}
+    };
+
+    match res {
+        true => Ok(true),
+        false => Ok(false),
+    }
+}
+
 /// Elevate a Discord help thread to a GitHub issue. This locks the thread.
 #[poise::command(slash_command, check = "check_role")]
 pub async fn elevate(ctx: Context<'_>) -> Result<(), Error> {
     let topic = Thread::get(ctx).await.name;
 
-    let thread_url = {
-        format!(
-            "https://discord.com/channels/{}/{}",
-            ctx.guild_id().unwrap(),
-            ctx.channel_id()
-        )
-    };
+    let thread_url = Thread::url_from_poise_ctx(ctx);
 
     let messages = ctx
         .channel_id()
@@ -88,27 +98,19 @@ pub async fn elevate(ctx: Context<'_>) -> Result<(), Error> {
                 The thread will now be locked to avoid needing to keep both communication channels synced with each other. 
                 \nIf you're not the original poster and you're having the same issue, please open a new Help thread or comment on the GitHub issue.
                 \n---\n
-                Thank you!", res.html_url))
+                Thank you!", &res.html_url))
                 .await?;
 
             Thread::set_locked_status(ctx, true).await?;
 
-            if let Err(e) = sqlx::query(
-                "UPDATE issues SET 
-                GithubLink = $1, 
-                Locked = TRUE,
-                LockStatusChangeReason = 'Thread was elevated to GitHub issue'
-                WHERE DiscordThreadLink = $2",
-            )
-            .bind(res.html_url.to_string())
-            .bind(thread_url)
-            .execute(&ctx.data().pool)
-            .await
+            if let Err(e) = ctx
+                .data()
+                .db
+                .clone()
+                .discord_elevate_thread(res.html_url.into(), thread_url)
+                .await
             {
-                error!(
-                    "Failed to update SQL record after elevating GitHub issue: {:?}",
-                    e
-                );
+                return Err(format!("Couldn't elevate thread: {e}").into());
             }
         }
 
@@ -120,22 +122,6 @@ pub async fn elevate(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-async fn check_role(ctx: Context<'_>) -> Result<bool, Error> {
-    let Ok(res) = ctx.author().has_role(
-        ctx.http(),
-        ctx.data().server_id.parse::<u64>().unwrap(),
-        ctx.data().staff_role_id.parse::<u64>().unwrap()
-    ).await else {
-         {error!("Something went wrong trying to check permissions.");
-        return Ok(false)}
-    };
-
-    match res {
-        true => Ok(true),
-        false => Ok(false),
-    }
-}
-
 /// (un)Lock a thread
 #[poise::command(slash_command, check = "check_role")]
 pub async fn set_locked(
@@ -143,13 +129,7 @@ pub async fn set_locked(
     #[description = "Set true to lock, set false to unlock"] locked: bool,
     #[description = "Reason for locking thread"] reason: String,
 ) -> Result<(), Error> {
-    let thread_url = {
-        format!(
-            "https://discord.com/channels/{}/{}",
-            ctx.guild_id().unwrap(),
-            ctx.channel_id()
-        )
-    };
+    let thread_url = Thread::url_from_poise_ctx(ctx);
 
     let message = if locked {
         format!("Locking thread. Reason: {reason}")
@@ -160,23 +140,14 @@ pub async fn set_locked(
     ctx.say(message).await?;
     Thread::set_locked_status(ctx, locked).await?;
 
-    if let Err(e) = sqlx::query(
-        "UPDATE issues SET
-        Locked = $1, 
-        LockStatusChangeReason = $2, 
-        ResolvedTimedate = CURRENT_TIMESTAMP 
-        WHERE DiscordThreadLink = $3",
-    )
-    .bind(locked)
-    .bind(reason)
-    .bind(thread_url)
-    .execute(&ctx.data().pool)
-    .await
+    if let Err(e) = ctx
+        .data()
+        .db
+        .clone()
+        .discord_change_locked_status(locked, reason, thread_url)
+        .await
     {
-        error!(
-            "Error when updating SQL record after thread lock status: {:?}",
-            e
-        );
+        return Err(format!("Error while setting locked status on thread: {e}").into());
     }
 
     Ok(())
@@ -187,15 +158,9 @@ pub async fn resolve(
     ctx: Context<'_>,
     #[description = "ID of user who resolved the issue"] resolved_by: Option<u64>,
 ) -> Result<(), Error> {
-    let thread_url = {
-        format!(
-            "https://discord.com/channels/{}/{}",
-            ctx.guild_id().unwrap(),
-            ctx.channel_id()
-        )
-    };
+    let thread_url = Thread::url_from_poise_ctx(ctx);
 
-    let name = if resolved_by.is_some() {
+    let resolved_by = if resolved_by.is_some() {
         ctx.http()
             .get_user(resolved_by.unwrap())
             .await
@@ -205,31 +170,23 @@ pub async fn resolve(
         ctx.author().name.clone()
     };
 
-    let message = format!("It looks like this thread has been resolved, so {name} has invoked this command. 
+    let message = format!("It looks like this thread has been resolved, so {resolved_by} has invoked this command. 
         The thread will now be locked.\n 
         If you're still having an issue with this, please feel free to open another thread detailing your issue.");
 
     ctx.say(message).await?;
     Thread::set_locked_status(ctx, true).await?;
 
-    if let Err(e) = sqlx::query(
-        "UPDATE issues SET
-        Locked = true, 
-        ResolverUser = $1
-        LockStatusChangeReason = 'Thread was resolved', 
-        ResolvedTimedate = CURRENT_TIMESTAMP 
-        WHERE DiscordThreadLink = $2",
-    )
-    .bind(name)
-    .bind(thread_url)
-    .execute(&ctx.data().pool)
-    .await
+    if let Err(e) = ctx
+        .data()
+        .db
+        .clone()
+        .discord_resolve_thread(resolved_by, thread_url)
+        .await
     {
-        error!(
-            "Error when updating SQL record after resolving thread: {:?}",
-            e
-        );
+        return Err(format!("Error when resolving thread: {e}").into());
     }
+
     Ok(())
 }
 
@@ -238,28 +195,16 @@ pub async fn set_severity(
     ctx: Context<'_>,
     #[description = "Severity level"] severity: SeverityCategory,
 ) -> Result<(), Error> {
-    let thread_url = {
-        format!(
-            "https://discord.com/channels/{}/{}",
-            ctx.guild_id().unwrap(),
-            ctx.channel_id()
-        )
-    };
+    let thread_url = Thread::url_from_poise_ctx(ctx);
 
-    if let Err(e) = sqlx::query(
-        "UPDATE issues SET
-        CatSev = $1
-        WHERE DiscordThreadLink = $2",
-    )
-    .bind(severity.to_num())
-    .bind(thread_url)
-    .execute(&ctx.data().pool)
-    .await
+    if let Err(e) = ctx
+        .data()
+        .db
+        .clone()
+        .discord_set_catsev(severity.to_num(), thread_url)
+        .await
     {
-        error!(
-            "Error when updating SQL record after resolving thread: {:?}",
-            e
-        );
+        return Err(format!("Error when setting category severity: {e}").into());
     }
 
     let message = format!(

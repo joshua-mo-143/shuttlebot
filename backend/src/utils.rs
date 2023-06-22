@@ -1,5 +1,4 @@
 use crate::{Context, Error};
-use anyhow::anyhow;
 use poise::serenity_prelude::model::channel::GuildChannel;
 use shuttle_secrets::SecretStore;
 use tracing::error;
@@ -16,15 +15,14 @@ pub struct Secrets {
 }
 
 pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
-    let discord_token = get_secret("DISCORD_TOKEN", secrets.clone()).unwrap();
-    let github_app_pem_key = get_secret("GITHUB_APP_PRIVATE_KEY", secrets.clone()).unwrap();
-    let github_personal_token = get_secret("GITHUB_PERSONAL_TOKEN", secrets.clone()).unwrap();
-    let github_app_id = get_secret("GITHUB_APP_ID", secrets.clone()).unwrap();
-    let discord_server_staff_role_id =
-        get_secret("DISCORD_SERVER_STAFF_ROLE_ID", secrets.clone()).unwrap();
-    let discord_server_id = get_secret("DISCORD_SERVER_ID", secrets.clone()).unwrap();
-    let oauth_id = get_secret("GITHUB_OAUTH_ID", secrets.clone()).unwrap();
-    let oauth_secret = get_secret("GITHUB_OAUTH_SECRET", secrets).unwrap();
+    let discord_token = get_secret("DISCORD_TOKEN", secrets.clone());
+    let github_app_pem_key = get_secret("GITHUB_APP_PRIVATE_KEY", secrets.clone());
+    let github_personal_token = get_secret("GITHUB_PERSONAL_TOKEN", secrets.clone());
+    let github_app_id = get_secret("GITHUB_APP_ID", secrets.clone());
+    let discord_server_staff_role_id = get_secret("DISCORD_SERVER_STAFF_ROLE_ID", secrets.clone());
+    let discord_server_id = get_secret("DISCORD_SERVER_ID", secrets.clone());
+    let oauth_id = get_secret("GITHUB_OAUTH_ID", secrets.clone());
+    let oauth_secret = get_secret("GITHUB_OAUTH_SECRET", secrets);
 
     Ok(Secrets {
         discord_token,
@@ -38,12 +36,8 @@ pub fn get_secrets(secrets: SecretStore) -> Result<Secrets, anyhow::Error> {
     })
 }
 
-fn get_secret(token: &str, secrets: SecretStore) -> Result<String, anyhow::Error> {
-    if let Some(secret) = secrets.get(token) {
-        Ok(secret)
-    } else {
-        Err(anyhow!(format!("'{token}' was not found")))
-    }
+fn get_secret(token: &str, secrets: SecretStore) -> String {
+    secrets.get(token).unwrap_or_else(|| "None".to_string())
 }
 
 pub struct Thread {}
@@ -70,5 +64,13 @@ impl Thread {
         }
 
         Ok(())
+    }
+
+    pub fn url_from_poise_ctx(ctx: Context<'_>) -> String {
+        format!(
+            "https://discord.com/channels/{}/{}",
+            ctx.guild_id().unwrap(),
+            ctx.channel_id()
+        )
     }
 }

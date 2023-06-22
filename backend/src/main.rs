@@ -6,30 +6,34 @@ use std::path::PathBuf;
 
 mod bot;
 mod commands;
+mod database;
 mod github;
 mod oauth;
+mod persist;
 mod router;
 mod utils;
 
 use bot::init_discord_bot;
-use github::init_github_app;
+use database::DBQueries;
+use github::Github;
 use router::init_router;
 use utils::get_secrets;
 
 pub struct Data {
-    pool: PgPool,
+    db: DBQueries,
     crab: Octocrab,
     staff_role_id: String,
     server_id: String,
 }
 
 struct CustomService {
-    pool: PgPool,
+    db: DBQueries,
     bot: Bot,
     public: PathBuf,
     oauth_id: String,
     oauth_secret: String,
     persist: PersistInstance,
+    crab: Octocrab,
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
@@ -43,26 +47,34 @@ type Bot = poise::FrameworkBuilder<
 #[shuttle_runtime::main]
 async fn custom(
     #[shuttle_secrets::Secrets] secret_store: SecretStore,
-    #[shuttle_shared_db::Postgres] pool: PgPool,
+    #[shuttle_shared_db::Postgres] db: PgPool,
     #[shuttle_static_folder::StaticFolder(folder = "public")] public: PathBuf,
     #[shuttle_persist::Persist] persist: PersistInstance,
 ) -> Result<CustomService, shuttle_runtime::Error> {
     sqlx::migrate!()
-        .run(&pool)
+        .run(&db)
         .await
         .expect("Found an error while running migrations");
+
+    let db = DBQueries { db };
 
     // Get the discord token set in `Secrets.toml`
     let secrets = get_secrets(secret_store).unwrap();
 
-    let crab = init_github_app(secrets.github_app_id, secrets.github_app_pem_key)
-        .await
-        .unwrap();
+    // set up octocrab instance
+    // if the PEM key and app ID exist, initiate as app - otherwise, initiate using personal key
+    let crab = if secrets.github_app_id != *"None" && secrets.github_app_pem_key != *"None" {
+        Github::init_as_app(secrets.github_app_id, secrets.github_app_pem_key)
+            .await
+            .unwrap()
+    } else {
+        Github::init_as_personal(secrets.github_personal_token).unwrap()
+    };
 
     let bot = init_discord_bot(
         &secrets.discord_token,
-        pool.clone(),
-        crab,
+        db.clone(),
+        crab.clone(),
         secrets.discord_server_staff_role_id,
         secrets.discord_server_id,
     )
@@ -70,12 +82,13 @@ async fn custom(
     .unwrap();
 
     Ok(CustomService {
-        pool,
+        db,
         bot,
         public,
         oauth_id: secrets.oauth_id,
         oauth_secret: secrets.oauth_secret,
         persist,
+        crab,
     })
 }
 
@@ -84,10 +97,11 @@ impl shuttle_runtime::Service for CustomService {
     async fn bind(mut self, addr: std::net::SocketAddr) -> Result<(), shuttle_runtime::Error> {
         let router = init_router(
             self.public,
-            self.pool,
+            self.db,
             self.oauth_id,
             self.oauth_secret,
             self.persist,
+            self.crab,
         );
 
         let serve_router = axum::Server::bind(&addr).serve(router.into_make_service());
