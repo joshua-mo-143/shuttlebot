@@ -104,6 +104,12 @@ pub struct GithubUserResponse {
     name: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct Redirect {
+    status_code: StatusCode,
+    location: HeaderValue,
+}
+
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize)]
 struct GithubUser {
