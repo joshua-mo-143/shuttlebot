@@ -9,6 +9,7 @@ struct UserSessions {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct UserSession {
+    pub name: String,
     pub session_id: String,
     pub expires_at: DateTime<Utc>,
 }
@@ -25,7 +26,21 @@ impl Persist {
             }
         };
 
-        instance.user_sessions.push(session);
+        if instance
+            .user_sessions
+            .clone()
+            .iter()
+            .any(|user| user.name == session.name)
+        {
+            for mut i in instance.clone().user_sessions {
+                if i.name == session.name {
+                    i.session_id = session.session_id.clone();
+                    i.expires_at = session.expires_at;
+                }
+            }
+        } else {
+            instance.user_sessions.push(session);
+        }
 
         persist
             .save::<UserSessions>("usersessions", instance)
@@ -79,5 +94,28 @@ impl Persist {
             .expect("Failed to save persist instance");
 
         Ok(())
+    }
+
+    pub fn check_record_exists(
+        persist: PersistInstance,
+        split: String,
+    ) -> Result<bool, &'static str> {
+        let instance = if let Ok(res) = persist.load::<UserSessions>("usersessions") {
+            res
+        } else {
+            return Err("No users exist!");
+        };
+
+        let mut split = split.split("--");
+
+        if instance
+            .user_sessions
+            .iter()
+            .any(|x| x.name == split.next().unwrap() && x.session_id == split.next().unwrap())
+        {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }

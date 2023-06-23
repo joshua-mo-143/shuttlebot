@@ -1,11 +1,12 @@
 use axum::{
     extract::{FromRef, State},
-    http::StatusCode,
+    http::{Request, StatusCode},
+    middleware::{self, Next},
     response::IntoResponse,
     routing::get,
     Json, Router,
 };
-use axum_extra::extract::cookie::Key;
+use axum_extra::extract::cookie::{Key, PrivateCookieJar};
 use shuttle_persist::PersistInstance;
 use std::path::PathBuf;
 use tower_http::cors::{Any, CorsLayer};
@@ -13,6 +14,7 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use crate::database::{DBQueries, DashboardData};
 use crate::oauth::github_callback;
+use crate::Persist;
 use octocrab::Octocrab;
 
 #[derive(Clone)]
@@ -49,10 +51,14 @@ pub fn init_router(
         persist,
     };
 
+    let api_router = Router::new()
+        .route("/issues", get(get_issues))
+        .route("/dashboard", get(dashboard))
+        .layer(middleware::from_fn_with_state(state.clone(), check_authed));
+
     Router::new()
+        .nest("/api", api_router)
         .route("/health", get(health))
-        .route("/api/issues", get(get_issues))
-        .route("/api/dashboard", get(dashboard))
         .route("/github/callback", get(github_callback))
         .with_state(state)
         .nest_service(
@@ -96,4 +102,21 @@ async fn dashboard(State(state): State<AppState>) -> Result<impl IntoResponse, i
     };
 
     Ok((StatusCode::OK, Json(dashboard_data)))
+}
+
+async fn check_authed<B>(
+    State(state): State<AppState>,
+    jar: PrivateCookieJar,
+    req: Request<B>,
+    next: Next<B>,
+) -> Result<impl IntoResponse, impl IntoResponse> {
+    let Some(cookie) = jar.get("session_id").map(|cookie| cookie.value().to_owned()) else {
+        return Err(StatusCode::FORBIDDEN)
+    };
+
+    if Persist::check_record_exists(state.persist, cookie).unwrap() {
+        Ok(next.run(req).await)
+    } else {
+        Err(StatusCode::FORBIDDEN)
+    }
 }

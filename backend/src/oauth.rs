@@ -59,12 +59,31 @@ pub async fn github_callback(
         .await
         .expect("Error while decoding github callback");
 
-    let cookie = Cookie::build("foo", json_response.access_token.to_string())
+    let user = ctx
+        .post("https://github.com/user")
+        .bearer_auth(&json_response.access_token)
+        .header(
+            HeaderName::from_lowercase(b"accept").unwrap(),
+            HeaderValue::from_bytes(b"application/json").unwrap(),
+        )
+        .send()
+        .await
+        .expect("Failed Github fetch request");
+
+    let user = user
+        .json::<GithubUser>()
+        .await
+        .expect("Error while decoding github callback");
+
+    let cookie_string = format!("{}--{}", &user.login, json_response.access_token);
+
+    let cookie = Cookie::build("foo", cookie_string)
         .secure(true)
         .max_age(Duration::DAY)
         .finish();
 
     let user_session = UserSession {
+        name: user.login,
         session_id: json_response.access_token,
         expires_at: DateTime::<Utc>::from_utc(
             NaiveDateTime::from_timestamp_opt(61, 0).unwrap(),
@@ -74,7 +93,7 @@ pub async fn github_callback(
 
     Persist::add_record(state.persist, user_session).unwrap();
 
-    (jar.add(cookie.clone()), Redirect::permanent("/"))
+    (jar.add(cookie.clone()), Redirect::permanent("/dashboard"))
 }
 
 #[derive(Serialize)]
@@ -85,7 +104,6 @@ pub struct GithubUserResponse {
 #[allow(dead_code)]
 #[derive(Deserialize, Serialize)]
 struct GithubUser {
-    token_type: String,
     login: String,
     id: i64,
     node_id: String,
