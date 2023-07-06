@@ -19,6 +19,7 @@ use octocrab::Octocrab;
 
 #[derive(Clone)]
 pub struct AppState {
+    pub crab: Octocrab,
     pub oauth_id: String,
     pub oauth_secret: String,
     pub key: Key,
@@ -44,6 +45,7 @@ pub fn init_router(
     let cors = CorsLayer::new().allow_methods(Any).allow_origin(Any);
 
     let state = AppState {
+        crab,
         db,
         oauth_id,
         oauth_secret,

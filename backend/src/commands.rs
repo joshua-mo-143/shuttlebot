@@ -3,6 +3,7 @@ use crate::Context;
 use crate::Error;
 use poise::serenity_prelude::CacheHttp;
 use tracing::error;
+use std::collections::HashMap;
 
 /// Link to Shuttle documentation
 #[poise::command(slash_command)]
@@ -156,26 +157,33 @@ pub async fn set_locked(
 #[poise::command(slash_command)]
 pub async fn resolve(
     ctx: Context<'_>,
-    #[description = "ID of user who resolved the issue"] resolved_by: Option<u64>,
 ) -> Result<(), Error> {
     let thread_url = Thread::url_from_poise_ctx(ctx);
 
-    let resolved_by = if resolved_by.is_some() {
-        ctx.http()
-            .get_user(resolved_by.unwrap())
-            .await
-            .unwrap()
-            .name
-    } else {
-        ctx.author().name.clone()
-    };
+    Thread::set_locked_status(ctx, true).await?;
 
+    let messages_len = ctx.channel_id().messages(ctx.http(), |message| message).await.unwrap().len();
+    let mut messages = ctx.channel_id().messages(ctx.http(), |message| message).await.unwrap();
+    messages.reverse();
+
+    let thread_author_name = &messages.first().unwrap().author.name;
+
+    let _ = messages.iter().filter(|x| x.author.name == *thread_author_name);
+
+    let resolved_by = messages.into_iter()
+        .fold(HashMap::<String, usize>::new(), |mut m, x| {
+            *m.entry(x.author.name).or_default() += 1;
+            m
+        })
+        .into_iter()
+        .max_by_key(|(_, v)| *v)
+        .map(|(k, _)| k).unwrap();
+    
     let message = format!("It looks like this thread has been resolved, so {resolved_by} has invoked this command. 
         The thread will now be locked.\n 
-        If you're still having an issue with this, please feel free to open another thread detailing your issue.");
-
+        ");
+    
     ctx.say(message).await?;
-    Thread::set_locked_status(ctx, true).await?;
 
     if let Err(e) = ctx
         .data()
@@ -186,6 +194,7 @@ pub async fn resolve(
     {
         return Err(format!("Error when resolving thread: {e}").into());
     }
+
 
     Ok(())
 }
@@ -242,3 +251,17 @@ impl SeverityCategory {
         }
     }
 }
+
+#[poise::command(slash_command)]
+pub async fn get_feedback(ctx: Context<'_>) -> Result<(), Error> {
+
+    ctx.send(|m| 
+        m.components(|components| 
+            components.create_action_row(|row| 
+                row.create_button(|button| button )
+            )
+        )
+    ).await?;
+    
+    Ok(())
+} 

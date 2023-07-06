@@ -4,10 +4,15 @@ use crate::{
 };
 use anyhow::Error;
 use octocrab::Octocrab;
+use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{Context, GatewayIntents};
 use poise::Event;
+use reqwest::StatusCode;
 use std::collections::HashSet;
+use tokio::time::sleep;
 use tracing::info;
+
+use std::time::Duration;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -140,4 +145,20 @@ pub async fn init_discord_bot(
         });
 
     Ok(framework)
+}
+
+#[allow(unreachable_code)]
+pub async fn monitor_service(_http: serenity::http::client::Http) -> Result<(), anyhow::Error> {
+    let ctx = reqwest::Client::new();
+    loop {
+        let res = ctx.get("https://www.google.com").send().await.unwrap();
+
+        if res.status() != StatusCode::OK {
+            todo!("Implement sending Discord message")
+        }
+
+        sleep(Duration::from_secs(5)).await;
+    }
+
+    Ok(())
 }

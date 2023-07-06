@@ -4,7 +4,7 @@ use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
-
+use poise::serenity_prelude::http::client::Http;
 mod bot;
 mod commands;
 mod database;
@@ -14,7 +14,7 @@ mod persist;
 mod router;
 mod utils;
 
-use bot::init_discord_bot;
+use bot::{init_discord_bot, monitor_service};
 use database::DBQueries;
 use github::Github;
 use persist::Persist;
@@ -29,6 +29,7 @@ pub struct Data {
 }
 
 struct CustomService {
+    http: Http,
     db: DBQueries,
     bot: Bot,
     public: PathBuf,
@@ -83,7 +84,10 @@ async fn custom(
     .await
     .unwrap();
 
+    let http = Http::new(&secrets.discord_token.to_owned());
+
     Ok(CustomService {
+        http,
         db,
         bot,
         public,
@@ -111,13 +115,15 @@ impl shuttle_runtime::Service for CustomService {
         tokio::select! {
             _ = self.bot.run() => {},
             _ = serve_router => {},
-            _ = remove_expired_sessions(self.persist) => {}
+            _ = remove_expired_sessions(self.persist) => {},
+            _ = monitor_service(self.http) => {}
         };
 
         Ok(())
     }
 }
 
+#[allow(unreachable_code)]
 pub async fn remove_expired_sessions(persist: PersistInstance) -> Result<(), anyhow::Error> {
     loop {
         Persist::filter_records(persist.clone())
@@ -125,4 +131,6 @@ pub async fn remove_expired_sessions(persist: PersistInstance) -> Result<(), any
 
         sleep(Duration::from_secs(300)).await;
     }
+
+    Ok(())
 }
