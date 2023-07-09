@@ -1,0 +1,24 @@
+{
+  "db": "PostgreSQL",
+  "70574d3a04b1f729f89dd4cb84e5082b7dc5fff9aaafa9d1ee4b2f47d4459422": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Bool",
+          "Bool",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "INSERT INTO issues (origin, \n            discordthreadlink,\n            originalposter, \n            initialmessage, \n            firstresponseuser, \n            resolveruser, \n            githublink, \n            locked, \n            resolved, \n            resolvedtimedate) VALUES ( \n            $1,\n            $2,\n            $3,\n            $4,\n            $5,\n            $6,\n            $7,\n            $8,\n            $9,\n            $10)"
+  }
+}

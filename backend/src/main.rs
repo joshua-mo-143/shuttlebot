@@ -1,10 +1,10 @@
 use octocrab::Octocrab;
+use poise::serenity_prelude::http::client::Http;
 use shuttle_persist::PersistInstance;
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
-use poise::serenity_prelude::http::client::Http;
 mod bot;
 mod commands;
 mod database;

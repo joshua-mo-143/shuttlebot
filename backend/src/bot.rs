@@ -1,5 +1,5 @@
 use crate::{
-    commands::{docs, elevate, resolve, set_locked, set_severity},
+    commands::{docs, elevate, refresh, resolve, set_locked, set_severity},
     Bot, DBQueries, Data,
 };
 use anyhow::Error;
@@ -122,7 +122,14 @@ pub async fn init_discord_bot(
 ) -> Result<Bot, Error> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![docs(), elevate(), set_locked(), resolve(), set_severity()],
+            commands: vec![
+                docs(),
+                elevate(),
+                set_locked(),
+                resolve(),
+                set_severity(),
+                refresh(),
+            ],
             event_handler: |ctx, event, _, data| Box::pin(handle_event(ctx, event, data)),
             ..Default::default()
         })

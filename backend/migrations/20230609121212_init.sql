@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS issues (
     Id SERIAL PRIMARY KEY,
-    DiscordThreadLink VARCHAR UNIQUE NOT NULL,
+    DiscordThreadLink VARCHAR,
     Origin VARCHAR NOT NULL DEFAULT 'discord',
     SevCat SMALLINT NOT NULL DEFAULT 5 CHECK (SevCat >= 1 AND SevCat <= 5),
     OriginalPoster VARCHAR,
