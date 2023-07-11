@@ -10,7 +10,7 @@ interface Record {
 	resolvedBy?: string,
 	discordThreadLink: string,
 	githubLink?: string,
-	categories: {},
+	categories?: string[],
 	creationDate: string,
 }
 
@@ -19,9 +19,9 @@ export default function Issues() {
 	const [data, setData] = React.useState<Record[]>([]);
 
 	React.useEffect(() => {
-		const meme = async () => {
+		const fetch_data = async () => {
 			
-	let fetch_url = `//${windows.location.host}/api/issues`
+	let fetch_url = `//localhost:8000/api/issues`
 
 		try {
 			let res = await fetch(fetch_url, {
@@ -33,7 +33,7 @@ export default function Issues() {
 				console.log(e.message)
 			}
 		}
-		meme()
+		fetch_data()
 	}, [])
 
 	return (
@@ -78,7 +78,7 @@ export default function Issues() {
 							: "Not elevated"}
 							</td>
 			<td className="px-5">
-							{Object.values(item.categories).join(", ")}
+							{item.categories?.join(", ")}
 							</td>
 			<td className="px-5">
 							{item.creationDate}

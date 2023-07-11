@@ -39,7 +39,7 @@ export default function Home() {
   const [data, setData] = React.useState<DashboardData>();
 
 	React.useEffect(() => {
-		const meme = async () => {
+		const fetch_data = async () => {
 			
 	let fetch_url = `//${window.location.host}/api/dashboard`
 
@@ -55,7 +55,7 @@ export default function Home() {
 				console.log(e.message)
 			}
 		}
-		meme()
+		fetch_data()
 	}, [])
   
   return (
@@ -136,7 +136,6 @@ export default function Home() {
           </div>
       </div>
       </div>
-      // <Link href="https://github.com/login/oauth/authorize?client_id=a943aff4893a533b6cb9">Log In with Github</Link>
   </div>
   )
 }
