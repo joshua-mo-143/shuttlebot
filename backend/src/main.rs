@@ -1,5 +1,4 @@
 use octocrab::Octocrab;
-use poise::serenity_prelude::http::client::Http;
 use shuttle_persist::PersistInstance;
 use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
@@ -14,14 +13,14 @@ mod persist;
 mod router;
 mod utils;
 
-use bot::{init_discord_bot, monitor_service};
+use bot::{init_discord_bot};
 use database::DBQueries;
 use github::Github;
 use persist::Persist;
 use router::init_router;
 use utils::get_secrets;
 
-pub struct Data {
+pub struct DiscordBotData {
     db: DBQueries,
     crab: Octocrab,
     staff_role_id: String,
@@ -29,7 +28,6 @@ pub struct Data {
 }
 
 struct CustomService {
-    http: Http,
     db: DBQueries,
     bot: Bot,
     public: PathBuf,
@@ -40,10 +38,10 @@ struct CustomService {
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+type Context<'a> = poise::Context<'a, DiscordBotData, Error>;
 
 type Bot = poise::FrameworkBuilder<
-    Data,
+    DiscordBotData,
     Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>,
 >;
 
@@ -62,10 +60,12 @@ async fn custom(
     let db = DBQueries { db };
 
     // Get the discord token set in `Secrets.toml`
+    // unwrap ok here due to it being required
     let secrets = get_secrets(secret_store).unwrap();
 
     // set up octocrab instance
     // if the PEM key and app ID exist, initiate as app - otherwise, initiate using personal key
+    // unwrap ok here due to this being required
     let crab = if secrets.github_app_id != *"None" && secrets.github_app_pem_key != *"None" {
         Github::init_as_app(secrets.github_app_id, secrets.github_app_pem_key)
             .await
@@ -74,6 +74,7 @@ async fn custom(
         Github::init_as_personal(secrets.github_personal_token).unwrap()
     };
 
+    // unwrap ok here as the discord bot is required for the service to run
     let bot = init_discord_bot(
         &secrets.discord_token,
         db.clone(),
@@ -84,10 +85,7 @@ async fn custom(
     .await
     .unwrap();
 
-    let http = Http::new(&secrets.discord_token.to_owned());
-
     Ok(CustomService {
-        http,
         db,
         bot,
         public,
@@ -115,8 +113,7 @@ impl shuttle_runtime::Service for CustomService {
         tokio::select! {
             _ = self.bot.run() => {},
             _ = serve_router => {},
-            _ = remove_expired_sessions(self.persist) => {},
-            _ = monitor_service(self.http) => {}
+            _ = remove_expired_sessions(self.persist) => {}
         };
 
         Ok(())

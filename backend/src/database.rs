@@ -1,6 +1,7 @@
 use serde::Serialize;
-use sqlx::PgPool;
+use sqlx::{types::Json, PgPool};
 use tracing::error;
+use serde_json::{value::Value};
 
 #[derive(Clone)]
 pub struct DBQueries {
@@ -20,6 +21,7 @@ pub struct Issue {
     pub github_link: Option<String>,
     #[serde(rename(serialize = "resolvedBy"))]
     pub resolved_by: Option<String>,
+    pub categories: Option<Json<Vec<String>>>,
     #[serde(rename(serialize = "creationDate"))]
     pub creation_date: String,
 }
@@ -44,8 +46,12 @@ pub struct LastFourWeeksStats {
     pub total_elevated_issues: i64,
     #[serde(rename(serialize = "totalResolvedIssues"))]
     pub total_resolved_issues: i64,
+    #[serde(rename(serialize = "totalOneTouchThreads"))]
+    pub total_one_touch_threads: i64,
+    #[serde(rename(serialize = "extendedThreads"))]
+    pub extended_threads: i64,
     #[serde(rename(serialize = "averageResponseTime"))]
-    pub average_response_time: String,
+    pub average_response_time: Option<String>,
     #[serde(rename(serialize = "bestSolver"))]
     pub best_solver: Option<String>,
     #[serde(rename(serialize = "bestFirstResponder"))]
@@ -70,6 +76,23 @@ pub struct IssuesAwaitingResponse {
 }
 
 impl DBQueries {
+    pub async fn discord_get_feedback(
+        self, channel_id: String, upvotes: i32, downvotes: i32,
+    ) -> Result<(), anyhow::Error> {
+         if let Err(e) = sqlx::query("INSERT INTO feedback (discordthreadid, upvotes, downvotes) VALUES ($1, $2, $3) 
+                    ON CONFLICT (discordthreadid) DO UPDATE SET upvotes = EXCLUDED.upvotes, downvotes = EXCLUDED.downvotes")
+            .bind(channel_id)
+            .bind(upvotes)
+            .bind(downvotes)
+            .execute(&self.db)
+            .await {
+                error!("Error when getting feedback: {e}");
+            }
+
+        Ok(())
+        
+    }
+    
     pub async fn discord_elevate_thread(
         self,
         github_issue_link: String,
@@ -128,16 +151,22 @@ impl DBQueries {
         self,
         resolved_by: String,
         thread_url: String,
+        message_count: i32,
+        usercount: i32,
     ) -> Result<(), anyhow::Error> {
         if let Err(e) = sqlx::query(
             "UPDATE issues SET
         Locked = true, 
-        ResolverUser = $1
-        LockStatusChangeReason = 'Thread was resolved', 
+        ResolverUser = $1,
+        LockStatusChangeReason = 'Thread was resolved',
+        messagecount = $2,
+        numberofusersinthread = $3,
         ResolvedTimedate = CURRENT_TIMESTAMP 
-        WHERE DiscordThreadLink = $2",
+        WHERE DiscordThreadLink = $4",
         )
         .bind(resolved_by)
+        .bind(message_count)
+        .bind(usercount)
         .bind(thread_url)
         .execute(&self.db)
         .await
@@ -204,9 +233,17 @@ impl DBQueries {
     pub async fn discord_create_issue_record(
         self,
         thread_url: String,
+        thread_id: String,
+        categories: Json<Value>,
     ) -> Result<(), anyhow::Error> {
-        if let Err(e) = sqlx::query("INSERT INTO issues (DiscordThreadLink) VALUES ($1)")
+        if let Err(e) = sqlx::query("INSERT INTO issues (
+            DiscordThreadId, 
+            DiscordThreadLink,
+            Categories) 
+            VALUES ($1, $2, $3)")
+            .bind(thread_id)
             .bind(thread_url)
+            .bind(categories)
             .execute(&self.db)
             .await
         {
@@ -223,7 +260,7 @@ impl DBQueries {
     ) -> Result<(), anyhow::Error> {
         if let Err(e) = sqlx::query(
             "UPDATE issues SET
-        CatSev = $1
+        SevCat = $1
         WHERE DiscordThreadLink = $2",
         )
         .bind(severity)
@@ -245,6 +282,8 @@ impl DBQueries {
         COUNT(*) as total_issues,
         (SELECT COUNT(*) FROM issues WHERE githubLink IS NOT NULL) as total_elevated_issues,
         (SELECT COUNT(*) FROM issues WHERE resolved = TRUE) as total_resolved_issues,
+        (SELECT COUNT(*) FROM issues WHERE messagecount > 6 AND usercount >= 2) as total_one_touch_threads,
+        (SELECT COUNT(*) FROM issues WHERE messagecount > 50) as extended_threads,
         CAST((SELECT date_trunc('second', AVG(firstresponsetimedate - created)) FROM issues) as varchar) as average_response_time,
         (SELECT COUNT(ResolverUser) FROM issues WHERE resolved = True group by ResolverUser order by ResolverUser desc limit 1) as best_solver,
         (SELECT COUNT(FirstResponseUser) FROM issues WHERE resolved = True group by FirstResponseUser order by FirstResponseUser desc limit 1) as best_first_responder
@@ -311,6 +350,7 @@ impl DBQueries {
         FirstResponseUser as first_responder,
         GithubLink as github_link,
         ResolverUser as resolved_by,
+        categories,
         CAST(DATE(created) as varchar) as creation_date
         from issues
         ",

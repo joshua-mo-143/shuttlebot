@@ -10,6 +10,7 @@ interface Record {
 	resolvedBy?: string,
 	discordThreadLink: string,
 	githubLink?: string,
+	categories: {},
 	creationDate: string,
 }
 
@@ -74,6 +75,9 @@ export default function Issues() {
 							{item.githubLink ? 
 							<Link href={item.githubLink} target="_blank">Click</Link>
 							: "Not elevated"}
+							</td>
+			<td className="px-5">
+							{Object.values(item.categories).join(", ")}
 							</td>
 			<td className="px-5">
 							{item.creationDate}

@@ -16,6 +16,8 @@ interface LastFourWeeksStats {
   totalIssues: number,
   totalElevatedIssues: number,
   totalResolvedIssues: number,
+  totalOneTouchThreads: number,
+  extendedThreads: number,
   averageResponseTime: string,
   bestSolver?: string,
   bestFirstResponder?: string

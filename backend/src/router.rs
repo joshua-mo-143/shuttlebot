@@ -55,8 +55,8 @@ pub fn init_router(
 
     let api_router = Router::new()
         .route("/issues", get(get_issues))
-        .route("/dashboard", get(dashboard))
-        .layer(middleware::from_fn_with_state(state.clone(), check_authed));
+        .route("/dashboard", get(dashboard));
+        // .layer(middleware::from_fn_with_state(state.clone(), check_authed));
 
     Router::new()
         .nest("/api", api_router)

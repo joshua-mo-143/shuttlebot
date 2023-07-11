@@ -1,22 +1,18 @@
 use crate::{
     commands::{docs, elevate, refresh, resolve, set_locked, set_severity},
-    Bot, DBQueries, Data,
+    Bot, DBQueries, DiscordBotData,
 };
 use anyhow::Error;
 use octocrab::Octocrab;
-use poise::serenity_prelude as serenity;
 use poise::serenity_prelude::{Context, GatewayIntents};
 use poise::Event;
-use reqwest::StatusCode;
 use std::collections::HashSet;
-use tokio::time::sleep;
-use tracing::info;
-
-use std::time::Duration;
+use tracing::{info};
+use sqlx::types::Json;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
-async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(), EventError> {
+async fn handle_event(ctx: &Context, event: &Event<'_>, data: &DiscordBotData) -> Result<(), EventError> {
     match event {
         Event::ThreadCreate { thread, .. } => {
             let thread_url = {
@@ -26,10 +22,12 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                 )
             };
 
+            let categories = thread.applied_tags.iter().map(|x| x.0.to_string()).collect::<Vec<String>>();
+
             if let Err(e) = data
                 .db
                 .clone()
-                .discord_create_issue_record(thread_url)
+                .discord_create_issue_record(thread_url, thread.id.to_string(), Json(categories.into()))
                 .await
             {
                 return Err(format!("Error when creating a new issue record: {e}").into());
@@ -108,7 +106,40 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                 }
             }
         }
-        _ => {}
+        Event::ReactionAdd {add_reaction, ..} => {
+            let message = add_reaction.message(&ctx.http).await.unwrap();
+            if message.author.name == *"shuttlebot"
+            {
+            let channel_id = add_reaction.channel_id.to_string();
+            let upvotes = message.reactions[0].count.to_string().parse::<i32>().unwrap() - 1;     
+            let downvotes = message.reactions[1].count.to_string().parse::<i32>().unwrap() - 1;     
+
+                data.db.clone().discord_get_feedback(
+                    channel_id,
+                    upvotes,
+                    downvotes
+                ).await.unwrap();
+
+                }
+    }
+        Event::ReactionRemove {removed_reaction, ..} => {
+            let message = removed_reaction.message(&ctx.http).await.unwrap();
+            if message.author.name == "shuttlebot" {
+                   
+            let channel_id = removed_reaction.channel_id.to_string();
+            let upvotes = message.reactions[0].count.to_string().parse::<i32>().unwrap() - 1;     
+            let downvotes = message.reactions[1].count.to_string().parse::<i32>().unwrap() - 1;     
+
+                data.db.clone().discord_get_feedback(
+                    channel_id,
+                    upvotes,
+                    downvotes
+                ).await.unwrap();
+
+                }
+    }
+        
+        _ => {println!("{:?}", event);}
     }
     Ok(())
 }
@@ -136,13 +167,15 @@ pub async fn init_discord_bot(
         .intents(
             GatewayIntents::GUILDS
                 | GatewayIntents::GUILD_MESSAGES
-                | GatewayIntents::MESSAGE_CONTENT,
+                | GatewayIntents::MESSAGE_CONTENT
+                | GatewayIntents::GUILD_MESSAGE_REACTIONS
+                | GatewayIntents::GUILD_MEMBERS
         )
         .token(discord_token)
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {
+                Ok(DiscordBotData {
                     db,
                     crab,
                     staff_role_id,
@@ -152,20 +185,4 @@ pub async fn init_discord_bot(
         });
 
     Ok(framework)
-}
-
-#[allow(unreachable_code)]
-pub async fn monitor_service(_http: serenity::http::client::Http) -> Result<(), anyhow::Error> {
-    let ctx = reqwest::Client::new();
-    loop {
-        let res = ctx.get("https://www.google.com").send().await.unwrap();
-
-        if res.status() != StatusCode::OK {
-            todo!("Implement sending Discord message")
-        }
-
-        sleep(Duration::from_secs(5)).await;
-    }
-
-    Ok(())
 }

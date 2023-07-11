@@ -29,7 +29,6 @@ pub struct GithubCallback {
     access_token: String,
 }
 
-#[axum_macros::debug_handler]
 pub async fn github_callback(
     State(state): State<AppState>,
     callback_code: Query<GithubToken>,

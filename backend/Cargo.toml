@@ -18,6 +18,7 @@ regex = "1.9.1"
 reqwest = "0.11.18"
 serde = { version = "1.0.164", features = ["derive"] }
 serde_json = "1.0.97"
+serenity = { version = "0.11.6", default-features = false }
 shuttle-persist = "0.20.0"
 shuttle-poise = "0.20.0"
 shuttle-runtime = "0.20.0"
