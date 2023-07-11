@@ -21,7 +21,7 @@ export default function Issues() {
 	React.useEffect(() => {
 		const meme = async () => {
 			
-	let fetch_url = `//localhost:8000/api/issues`
+	let fetch_url = `//${windows.location.host}/api/issues`
 
 		try {
 			let res = await fetch(fetch_url, {
@@ -50,6 +50,7 @@ export default function Issues() {
 						<th className="px-5 py-2">Resolved By</th>
 						<th className="px-5 py-2">Discord Thread Link</th>
 						<th className="px-5 py-2">Github Link</th>
+						<th className="px-5 py-2">Categories</th>
 						<th className="px-5 py-2">Created At</th>
 					</tr>
 		</thead>
