@@ -10,6 +10,7 @@ interface Record {
 	resolvedBy?: string,
 	discordThreadLink: string,
 	githubLink?: string,
+	categories?: string[],
 	creationDate: string,
 }
 
@@ -18,7 +19,7 @@ export default function Issues() {
 	const [data, setData] = React.useState<Record[]>([]);
 
 	React.useEffect(() => {
-		const meme = async () => {
+		const fetch_data = async () => {
 			
 	let fetch_url = `//localhost:8000/api/issues`
 
@@ -32,7 +33,7 @@ export default function Issues() {
 				console.log(e.message)
 			}
 		}
-		meme()
+		fetch_data()
 	}, [])
 
 	return (
@@ -49,6 +50,7 @@ export default function Issues() {
 						<th className="px-5 py-2">Resolved By</th>
 						<th className="px-5 py-2">Discord Thread Link</th>
 						<th className="px-5 py-2">Github Link</th>
+						<th className="px-5 py-2">Categories</th>
 						<th className="px-5 py-2">Created At</th>
 					</tr>
 		</thead>
@@ -74,6 +76,9 @@ export default function Issues() {
 							{item.githubLink ? 
 							<Link href={item.githubLink} target="_blank">Click</Link>
 							: "Not elevated"}
+							</td>
+			<td className="px-5">
+							{item.categories?.join(", ")}
 							</td>
 			<td className="px-5">
 							{item.creationDate}

@@ -4,7 +4,6 @@ use shuttle_secrets::SecretStore;
 use sqlx::PgPool;
 use std::path::PathBuf;
 use tokio::time::{sleep, Duration};
-
 mod bot;
 mod commands;
 mod database;
@@ -14,14 +13,14 @@ mod persist;
 mod router;
 mod utils;
 
-use bot::init_discord_bot;
+use bot::{init_discord_bot};
 use database::DBQueries;
 use github::Github;
 use persist::Persist;
 use router::init_router;
 use utils::get_secrets;
 
-pub struct Data {
+pub struct DiscordBotData {
     db: DBQueries,
     crab: Octocrab,
     staff_role_id: String,
@@ -39,10 +38,10 @@ struct CustomService {
 }
 
 type Error = Box<dyn std::error::Error + Send + Sync>;
-type Context<'a> = poise::Context<'a, Data, Error>;
+type Context<'a> = poise::Context<'a, DiscordBotData, Error>;
 
 type Bot = poise::FrameworkBuilder<
-    Data,
+    DiscordBotData,
     Box<(dyn std::error::Error + std::marker::Send + Sync + 'static)>,
 >;
 
@@ -61,10 +60,12 @@ async fn custom(
     let db = DBQueries { db };
 
     // Get the discord token set in `Secrets.toml`
+    // unwrap ok here due to it being required
     let secrets = get_secrets(secret_store).unwrap();
 
     // set up octocrab instance
     // if the PEM key and app ID exist, initiate as app - otherwise, initiate using personal key
+    // unwrap ok here due to this being required
     let crab = if secrets.github_app_id != *"None" && secrets.github_app_pem_key != *"None" {
         Github::init_as_app(secrets.github_app_id, secrets.github_app_pem_key)
             .await
@@ -73,6 +74,7 @@ async fn custom(
         Github::init_as_personal(secrets.github_personal_token).unwrap()
     };
 
+    // unwrap ok here as the discord bot is required for the service to run
     let bot = init_discord_bot(
         &secrets.discord_token,
         db.clone(),
@@ -118,6 +120,7 @@ impl shuttle_runtime::Service for CustomService {
     }
 }
 
+#[allow(unreachable_code)]
 pub async fn remove_expired_sessions(persist: PersistInstance) -> Result<(), anyhow::Error> {
     loop {
         Persist::filter_records(persist.clone())
@@ -125,4 +128,6 @@ pub async fn remove_expired_sessions(persist: PersistInstance) -> Result<(), any
 
         sleep(Duration::from_secs(300)).await;
     }
+
+    Ok(())
 }

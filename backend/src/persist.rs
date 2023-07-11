@@ -48,30 +48,6 @@ impl Persist {
         Ok(())
     }
 
-    pub fn delete_record(
-        persist: PersistInstance,
-        session_id: String,
-    ) -> Result<(), anyhow::Error> {
-        let mut instance = if let Ok(res) = persist.load::<UserSessions>("usersessions") {
-            res
-        } else {
-            return Ok(());
-        };
-
-        let new_instance = instance
-            .user_sessions
-            .into_iter()
-            .filter(|user| user.session_id == session_id)
-            .collect::<Vec<UserSession>>();
-
-        instance.user_sessions = new_instance;
-
-        persist
-            .save::<UserSessions>("usersessions", instance)
-            .expect("Failed to save persist instance");
-        Ok(())
-    }
-
     pub fn filter_records(persist: PersistInstance) -> Result<(), anyhow::Error> {
         let mut instance = if let Ok(res) = persist.load::<UserSessions>("usersessions") {
             res

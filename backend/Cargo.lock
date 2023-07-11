@@ -75,6 +75,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "aho-corasick"
+version = "1.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43f6cb1bf222025340178f382c426f13757b2960e89779dfcb319c32542a5a41"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -318,9 +327,11 @@ dependencies = [
  "jsonwebtoken",
  "octocrab",
  "poise",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
+ "serenity",
  "shuttle-persist",
  "shuttle-poise",
  "shuttle-runtime",
@@ -617,6 +628,9 @@ name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "encoding_rs"
@@ -1259,7 +1273,7 @@ version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
- "regex-automata",
+ "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -1911,11 +1925,14 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.4"
+version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0ab3ca65655bb1e41f2a8c8cd662eb4fb035e67c3f78da1d61dffe89d07300f"
+checksum = "b2eae68fc220f7cf2532e4494aded17545fce192d59cd996e0fe7887f4ceb575"
 dependencies = [
- "regex-syntax 0.7.2",
+ "aho-corasick",
+ "memchr",
+ "regex-automata 0.3.2",
+ "regex-syntax 0.7.3",
 ]
 
 [[package]]
@@ -1928,6 +1945,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-automata"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "83d3daa6976cffb758ec878f108ba0e062a45b2d6ca3a2cca965338855476caf"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax 0.7.3",
+]
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1935,9 +1963,9 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.2"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
+checksum = "2ab07dc67230e4a4718e70fd5c20055a4334b121f1f9db8fe63ef39ce9b8c846"
 
 [[package]]
 name = "reqwest"
@@ -2252,9 +2280,9 @@ dependencies = [
 
 [[package]]
 name = "serenity"
-version = "0.11.5"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82fd5e7b5858ad96e99d440138f34f5b98e1b959ebcd3a1036203b30e78eb788"
+checksum = "d007dc45584ecc47e791f2a9a7cf17bf98ac386728106f111159c846d624be3f"
 dependencies = [
  "async-trait",
  "async-tungstenite",
@@ -2326,9 +2354,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-codegen"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a0d64f4fcee2c5df205fc577915d2b5cf58cb9fed821225d4dbaa2efc47ec60"
+checksum = "d87d71b59fb4c8e16850d82a35a1db404fe94ba25cb3f3e59a4446dc8693bea8"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
@@ -2338,9 +2366,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-common"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13296902586cc37a2641364dc27b6ce98f184aabc0b04fd9255f31b27ffc8abc"
+checksum = "df1cae7a1f9babad2fbed877c8e64be57449310774f4d56de6f99da3e57862cd"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2376,23 +2404,22 @@ dependencies = [
 
 [[package]]
 name = "shuttle-persist"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f212081d9af35c546f985c68ba1a8184899e66b1ecf164357015e79903db8ce"
+checksum = "a4633370063800fde20d796ea1db888c493f864415b85615e7a9bae3afa99aa6"
 dependencies = [
  "async-trait",
  "bincode",
  "serde",
- "shuttle-common",
  "shuttle-service",
  "thiserror",
 ]
 
 [[package]]
 name = "shuttle-poise"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7ea43feed299c3d0320a4138cfebe0b6aab334f5ac3d9bcc654431bbdb397e8"
+checksum = "53408c3884aa3962ddb9666ab40e310ea228fb904553053be15bc8fcf9cc6966"
 dependencies = [
  "poise",
  "shuttle-runtime",
@@ -2400,9 +2427,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-proto"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "083addd888bfb6abcd888d6b20b5e5fcafc00b166f8211c0dcf4753fede5b70c"
+checksum = "7fb3f01d80d60e363910bab3ee01bf421bb9c30c58f1a5d3180186872a325b98"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2418,9 +2445,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-runtime"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5bf2b88fa06af2e48189e933a2b9be139f156727a2e2a5a8993a5e5d13005cb"
+checksum = "c9443234a16b34f1de3ad71a8875381f4d1cad53aca08e607d12811e27c2d73d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2428,6 +2455,7 @@ dependencies = [
  "prost-types",
  "serde",
  "serde_json",
+ "shuttle-codegen",
  "shuttle-common",
  "shuttle-proto",
  "shuttle-service",
@@ -2443,9 +2471,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-secrets"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbfe88a94ca090ab59a85680cee59c363ed4e79150ecdcde93fa623977904914"
+checksum = "3a5665b0d033aae70d7ad4c2b7537b21ca66506a7aac8c5cf389df720d26b0ad"
 dependencies = [
  "async-trait",
  "serde",
@@ -2454,14 +2482,13 @@ dependencies = [
 
 [[package]]
 name = "shuttle-service"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e83ea6415ebbedaef2087d4564ca5ea6aea0351df7cd8afefd22b63f0c610dc"
+checksum = "b84097de44183cfe573eb875c26ecafe1eb78672c214fbc5889462ef37b1bc98"
 dependencies = [
  "anyhow",
  "async-trait",
  "serde",
- "shuttle-codegen",
  "shuttle-common",
  "strfmt",
  "thiserror",
@@ -2469,9 +2496,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-shared-db"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb5172f5f0d9782e4a5cf4cf4ccc3847043f34e490ea6634b08b8b9c7dae1fbd"
+checksum = "f0fca7f7f4a9e52a6c827cfcbf398c577543869edf6d308fed054057eb431e96"
 dependencies = [
  "async-trait",
  "serde",
@@ -2481,9 +2508,9 @@ dependencies = [
 
 [[package]]
 name = "shuttle-static-folder"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd6506ad5f951028f7846d62ee938168de9780a57070b25bcc3bd0183e2741ca"
+checksum = "002935d30407640975fdbdb553fe85bd9b22794987809b5a7ae7361b521bee28"
 dependencies = [
  "async-trait",
  "dunce",
@@ -2601,6 +2628,7 @@ dependencies = [
  "bitflags",
  "byteorder",
  "bytes",
+ "chrono",
  "crc",
  "crossbeam-queue",
  "dirs",
@@ -2648,9 +2676,12 @@ dependencies = [
  "dotenvy",
  "either",
  "heck",
+ "hex",
  "once_cell",
  "proc-macro2",
  "quote",
+ "serde",
+ "serde_json",
  "sha2",
  "sqlx-core",
  "sqlx-rt",

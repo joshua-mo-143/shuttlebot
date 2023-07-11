@@ -1,17 +1,18 @@
 use crate::{
-    commands::{docs, elevate, resolve, set_locked, set_severity},
-    Bot, DBQueries, Data,
+    commands::{docs, elevate, refresh, resolve, set_locked, set_severity},
+    Bot, DBQueries, DiscordBotData,
 };
 use anyhow::Error;
 use octocrab::Octocrab;
 use poise::serenity_prelude::{Context, GatewayIntents};
 use poise::Event;
 use std::collections::HashSet;
-use tracing::info;
+use tracing::{info};
+use sqlx::types::Json;
 
 type EventError = Box<dyn std::error::Error + Send + Sync>;
 
-async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(), EventError> {
+async fn handle_event(ctx: &Context, event: &Event<'_>, data: &DiscordBotData) -> Result<(), EventError> {
     match event {
         Event::ThreadCreate { thread, .. } => {
             let thread_url = {
@@ -21,10 +22,12 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                 )
             };
 
+            let categories = thread.applied_tags.iter().map(|x| x.0.to_string()).collect::<Vec<String>>();
+
             if let Err(e) = data
                 .db
                 .clone()
-                .discord_create_issue_record(thread_url)
+                .discord_create_issue_record(thread_url, thread.id.to_string(), categories)
                 .await
             {
                 return Err(format!("Error when creating a new issue record: {e}").into());
@@ -103,6 +106,39 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &Data) -> Result<(
                 }
             }
         }
+        Event::ReactionAdd {add_reaction, ..} => {
+            let message = add_reaction.message(&ctx.http).await.unwrap();
+            if message.author.name == *"shuttlebot"
+            {
+            let channel_id = add_reaction.channel_id.to_string();
+            let upvotes = message.reactions[0].count.to_string().parse::<i32>().unwrap() - 1;     
+            let downvotes = message.reactions[1].count.to_string().parse::<i32>().unwrap() - 1;     
+
+                data.db.clone().discord_get_feedback(
+                    channel_id,
+                    upvotes,
+                    downvotes
+                ).await.unwrap();
+
+                }
+    }
+        Event::ReactionRemove {removed_reaction, ..} => {
+            let message = removed_reaction.message(&ctx.http).await.unwrap();
+            if message.author.name == "shuttlebot" {
+                   
+            let channel_id = removed_reaction.channel_id.to_string();
+            let upvotes = message.reactions[0].count.to_string().parse::<i32>().unwrap() - 1;     
+            let downvotes = message.reactions[1].count.to_string().parse::<i32>().unwrap() - 1;     
+
+                data.db.clone().discord_get_feedback(
+                    channel_id,
+                    upvotes,
+                    downvotes
+                ).await.unwrap();
+
+                }
+    }
+        
         _ => {}
     }
     Ok(())
@@ -117,20 +153,29 @@ pub async fn init_discord_bot(
 ) -> Result<Bot, Error> {
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![docs(), elevate(), set_locked(), resolve(), set_severity()],
+            commands: vec![
+                docs(),
+                elevate(),
+                set_locked(),
+                resolve(),
+                set_severity(),
+                refresh(),
+            ],
             event_handler: |ctx, event, _, data| Box::pin(handle_event(ctx, event, data)),
             ..Default::default()
         })
         .intents(
             GatewayIntents::GUILDS
                 | GatewayIntents::GUILD_MESSAGES
-                | GatewayIntents::MESSAGE_CONTENT,
+                | GatewayIntents::MESSAGE_CONTENT
+                | GatewayIntents::GUILD_MESSAGE_REACTIONS
+                | GatewayIntents::GUILD_MEMBERS
         )
         .token(discord_token)
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 poise::builtins::register_globally(ctx, &framework.options().commands).await?;
-                Ok(Data {
+                Ok(DiscordBotData {
                     db,
                     crab,
                     staff_role_id,

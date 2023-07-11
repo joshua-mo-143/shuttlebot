@@ -19,6 +19,7 @@ use octocrab::Octocrab;
 
 #[derive(Clone)]
 pub struct AppState {
+    pub crab: Octocrab,
     pub oauth_id: String,
     pub oauth_secret: String,
     pub key: Key,
@@ -44,6 +45,7 @@ pub fn init_router(
     let cors = CorsLayer::new().allow_methods(Any).allow_origin(Any);
 
     let state = AppState {
+        crab,
         db,
         oauth_id,
         oauth_secret,
@@ -53,8 +55,8 @@ pub fn init_router(
 
     let api_router = Router::new()
         .route("/issues", get(get_issues))
-        .route("/dashboard", get(dashboard))
-        .layer(middleware::from_fn_with_state(state.clone(), check_authed));
+        .route("/dashboard", get(dashboard));
+        // .layer(middleware::from_fn_with_state(state.clone(), check_authed));
 
     Router::new()
         .nest("/api", api_router)
