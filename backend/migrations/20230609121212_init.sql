@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS issues (
     Locked BOOLEAN NOT NULL DEFAULT false,
     LockStatusChangeReason VARCHAR,
     Resolved BOOLEAN NOT NULL DEFAULT false,
-    Categories JSONB,
+    Categories TEXT[],
     MessageCount INTEGER,
     UserCount INTEGER,
     Created TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

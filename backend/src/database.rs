@@ -21,7 +21,7 @@ pub struct Issue {
     pub github_link: Option<String>,
     #[serde(rename(serialize = "resolvedBy"))]
     pub resolved_by: Option<String>,
-    pub categories: Option<Json<Vec<String>>>,
+    pub categories: Option<Vec<String>>,
     #[serde(rename(serialize = "creationDate"))]
     pub creation_date: String,
 }
@@ -234,7 +234,7 @@ impl DBQueries {
         self,
         thread_url: String,
         thread_id: String,
-        categories: Json<Value>,
+        categories: Vec<String>,
     ) -> Result<(), anyhow::Error> {
         if let Err(e) = sqlx::query("INSERT INTO issues (
             DiscordThreadId, 

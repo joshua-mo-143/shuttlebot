@@ -27,7 +27,7 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &DiscordBotData) -
             if let Err(e) = data
                 .db
                 .clone()
-                .discord_create_issue_record(thread_url, thread.id.to_string(), Json(categories.into()))
+                .discord_create_issue_record(thread_url, thread.id.to_string(), categories)
                 .await
             {
                 return Err(format!("Error when creating a new issue record: {e}").into());
@@ -139,7 +139,7 @@ async fn handle_event(ctx: &Context, event: &Event<'_>, data: &DiscordBotData) -
                 }
     }
         
-        _ => {println!("{:?}", event);}
+        _ => {}
     }
     Ok(())
 }

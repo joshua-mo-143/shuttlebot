@@ -350,7 +350,7 @@ pub async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
         issues_list.push(Issue {
             discord_thread_id: Some(thread.id.to_string()),
             discord_thread_url: Some(format!(
-                "https://www.discord.com/1072109825674203136/{}",
+                "https://www.discord.com/channels/1072109825674203136/{}",
                 thread.id
             )),
             original_poster: Some(messages[0].author.name.clone()),
@@ -374,11 +374,20 @@ pub async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
     }
 
     for issue in github_user_submitted_issues {
-        let mut comments = octocrab::instance().issues("joshua-mo-143", "test").list_comments(*issue.id).send().await?;
-        let last_comment = if issue.state == IssueState::Closed {comments.items.pop()} else {None};
+        println!("{:?}", issue);
+        let comments = match octocrab::instance().issues("joshua-mo-143", "test").list_comments(*issue.id).send().await {
+            Ok(res) => Some(res),
+            Err(_) => None
+        };
+
+        // unwrap ok here as we've already error matched it
+        // typically there will be an error if there are no comments
+        if comments.is_some() {
+        let mut comments = comments.unwrap();
+        let last_comment = if  issue.state == IssueState::Closed {comments.items.pop()} else {None};
         let first_response_user = if comments.items.len() > 1 {Some(comments.items[1].user.login.clone())} else {None};
         let first_response_time_date = if comments.items.len() > 1 {Some(comments.items[1].created_at)} else {None};
-        
+            
         issues_list.push(Issue {
             origin: "github".to_string(),
             original_poster: Some(issue.user.login),
@@ -391,6 +400,17 @@ pub async fn refresh(ctx: Context<'_>) -> Result<(), Error> {
             resolved_time_date: if issue.state == IssueState::Closed {last_comment.unwrap().updated_at} else {None},
             ..Default::default()
         })
+        } else {
+            
+        issues_list.push(Issue {
+            origin: "github".to_string(),
+            original_poster: Some(issue.user.login),
+            github_link: Some(issue.html_url.to_string()),
+            locked: issue.state == IssueState::Closed,
+            resolved: issue.state == IssueState::Closed,
+            .. Default::default()
+        })
+        }        
     }
 
     for issue in issues_list {
